@@ -1,0 +1,69 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e1a">
+  <title>AI 猜猜看 - 畫板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/mobile.css?v=7">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="top-bar">
+      <div class="top-left">
+        <span class="logo">&#127912;</span>
+        <div>
+          <h1>AI 猜猜看</h1>
+          <span id="roomLabel" class="room-label"></span>
+        </div>
+      </div>
+      <div id="connBadge" class="conn-badge offline">連線中</div>
+    </header>
+
+    <section class="canvas-wrap">
+      <canvas id="drawCanvas" width="500" height="500"></canvas>
+    </section>
+
+    <section class="controls">
+      <div class="palette" id="palette">
+        <button class="swatch active" data-color="#1a1a1a" style="--c:#1a1a1a" aria-label="黑色"></button>
+        <button class="swatch" data-color="#ffffff" style="--c:#fff;border-color:#666" aria-label="白色"></button>
+        <button class="swatch" data-color="#e03131" style="--c:#e03131" aria-label="紅色"></button>
+        <button class="swatch" data-color="#f08c00" style="--c:#f08c00" aria-label="橘色"></button>
+        <button class="swatch" data-color="#fcc419" style="--c:#fcc419" aria-label="黃色"></button>
+        <button class="swatch" data-color="#2f9e44" style="--c:#2f9e44" aria-label="綠色"></button>
+        <button class="swatch" data-color="#1c7ed6" style="--c:#1c7ed6" aria-label="藍色"></button>
+        <button class="swatch" data-color="#9c36b5" style="--c:#9c36b5" aria-label="紫色"></button>
+      </div>
+
+      <div class="tool-row">
+        <div class="btn-group">
+          <button id="brushBtn" class="tool-btn active">&#9998; 畫筆</button>
+          <button id="eraserBtn" class="tool-btn">&#129529; 橡皮</button>
+        </div>
+        <div class="btn-group">
+          <button id="undoBtn" class="tool-btn">&#8617; 復原</button>
+          <button id="clearBtn" class="tool-btn">&#128465; 清除</button>
+        </div>
+      </div>
+
+      <div class="size-row">
+        <label>筆刷粗細</label>
+        <input id="sizeSlider" type="range" min="2" max="40" value="6">
+        <output id="sizeDisplay">6</output>
+      </div>
+    </section>
+
+    <button id="submitBtn" class="submit-btn" disabled>
+      <span>&#128640;</span> 送出畫作給 AI 猜
+    </button>
+
+    <p id="statusMsg" class="status-msg">請在畫板上揮灑創意</p>
+  </div>
+
+  <script src="vendor/ably.min.js?v=7"></script>
+  <script src="js/mobile.js?v=7"></script>
+</body>
+</html>

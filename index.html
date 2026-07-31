@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QRcode 互動遊戲集</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, 'Noto Sans TC', system-ui, sans-serif; background: #0a0e1a; color: #e8edf5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .wrap { max-width: 680px; width: 100%; }
+    h1 { font-size: 28px; font-weight: 900; letter-spacing: -.03em; margin-bottom: 6px; }
+    p.sub { color: #7b89a6; font-size: 14px; margin-bottom: 24px; }
+    .game {
+      display: flex; align-items: center; gap: 16px;
+      background: #131827; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; padding: 20px 24px; text-decoration: none; color: inherit;
+      transition: transform .2s, border-color .2s;
+    }
+    .game:hover { transform: translateY(-2px); border-color: #00f0ff; }
+    .game .emoji { font-size: 40px; }
+    .game h2 { font-size: 18px; font-weight: 800; }
+    .game p { color: #7b89a6; font-size: 13px; margin-top: 4px; }
+    .game .go { margin-left: auto; color: #00f0ff; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>&#127918; QRcode 互動遊戲集</h1>
+    <p class="sub">大螢幕 + 手機掃碼互動，選一個遊戲開始吧</p>
+    <a class="game" href="AI-Pictionary/">
+      <span class="emoji">&#127912;</span>
+      <div>
+        <h2>AI 猜猜看</h2>
+        <p>手機畫畫，Gemini AI 即時猜測你的畫作並評分</p>
+      </div>
+      <span class="go">進入 &#8594;</span>
+    </a>
+  </div>
+</body>
+</html>
