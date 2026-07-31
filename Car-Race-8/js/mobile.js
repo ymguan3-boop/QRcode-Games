@@ -1,9 +1,15 @@
 (function () {
   'use strict';
 
-  const MASK_SRC = 'assets/car-mask.png';
   const CANVAS_W = 619;
   const CANVAS_H = 1189;
+
+  const CAR_TYPES = {
+    sedan:   { label: '房車', src: 'assets/car-mask.png' },
+    sports:  { label: '跑車', src: 'assets/mask-sports.svg' },
+    offroad: { label: '越野', src: 'assets/mask-offroad.svg' },
+    muscle:  { label: '肌肉', src: 'assets/mask-muscle.svg' }
+  };
 
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
   const channelName = function (room) { return 'carrace-' + room; };
@@ -21,6 +27,7 @@
 
   const el = {
     connBadge: document.getElementById('connBadge'),
+    carSelect: document.getElementById('carSelect'),
     palette: document.getElementById('palette'),
     undoBtn: document.getElementById('undoBtn'),
     clearBtn: document.getElementById('clearBtn'),
@@ -40,6 +47,8 @@
 
   let maskImageData = null;
   let maskLoaded = false;
+  let maskLoadToken = 0;
+  let currentCarType = 'sedan';
   let isDrawing = false;
   let lastPoint = null;
   let tool = 'brush';
@@ -49,9 +58,17 @@
   let hasDrawing = false;
 
   /* ═══════════ 遮罩載入（頂視車輪廓） ═══════════ */
-  function loadMask() {
+  function maskSrc() {
+    return (CAR_TYPES[currentCarType] || CAR_TYPES.sedan).src;
+  }
+
+  function loadMask(type) {
+    currentCarType = type || currentCarType;
+    const token = ++maskLoadToken;
+    maskLoaded = false;
     const maskImg = new Image();
     maskImg.onload = function () {
+      if (token !== maskLoadToken) return; // 已切換車款，丟棄舊結果
       const offscreen = document.createElement('canvas');
       offscreen.width = CANVAS_W;
       offscreen.height = CANVAS_H;
@@ -70,20 +87,15 @@
       setMsg('開始幫賽車上色吧！', 'ok');
     };
     maskImg.onerror = function () {
+      if (token !== maskLoadToken) return;
       setMsg('讀取賽車模型失敗，請重新整理', 'err');
     };
-    maskImg.src = MASK_SRC;
+    maskImg.src = maskSrc();
   }
 
   function drawGuide() {
     guideCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
     drawCheckeredBackground(guideCtx);
-
-    // 輪廓以半透明呈現，方便玩家辨識著色範圍
-    guideCtx.save();
-    guideCtx.globalAlpha = 0.35;
-    guideCtx.drawImage(guideCanvas, 0, 0); // placeholder, 改由 mask 圖
-    guideCtx.restore();
 
     const maskImg = new Image();
     maskImg.onload = function () {
@@ -92,7 +104,7 @@
       guideCtx.drawImage(maskImg, 0, 0, CANVAS_W, CANVAS_H);
       guideCtx.restore();
     };
-    maskImg.src = MASK_SRC;
+    maskImg.src = maskSrc();
   }
 
   function drawCheckeredBackground(ctx) {
@@ -324,7 +336,7 @@
 
       const base64 = tempCanvas.toDataURL('image/png');
       const msgId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-      channel.publish('car', { id: msgId, imageData: base64 }, function (err) {
+      channel.publish('car', { id: msgId, imageData: base64, carType: currentCarType }, function (err) {
         if (err) {
           setMsg('傳送失敗，請重試', 'err');
           console.error('[submit] publish error:', err);
@@ -370,6 +382,29 @@
   function hideSuccess() {
     el.successModal.classList.add('hidden');
     setMsg('再畫一台新賽車吧！');
+  }
+
+  /* ═══════════ 車款選擇 ═══════════ */
+  function buildCarSelect() {
+    Object.keys(CAR_TYPES).forEach(function (key, i) {
+      const btn = document.createElement('button');
+      btn.className = 'car-type-btn' + (key === currentCarType ? ' active' : '');
+      btn.textContent = CAR_TYPES[key].label;
+      btn.addEventListener('click', function () {
+        selectCar(key);
+      });
+      el.carSelect.appendChild(btn);
+    });
+  }
+
+  function selectCar(key) {
+    if (!CAR_TYPES[key]) return;
+    currentCarType = key;
+    el.carSelect.querySelectorAll('.car-type-btn').forEach(function (b, i) {
+      b.classList.toggle('active', Object.keys(CAR_TYPES)[i] === key);
+    });
+    loadMask(key);
+    setMsg('已選擇 ' + CAR_TYPES[key].label + '，開始上色吧！', 'ok');
   }
 
   /* ═══════════ 事件綁定 ═══════════ */
@@ -433,8 +468,9 @@
     }
 
     buildPalette();
+    buildCarSelect();
     bindEvents();
-    loadMask();
+    loadMask('sedan');
     fitCanvas();
     window.addEventListener('resize', fitCanvas);
     window.addEventListener('orientationchange', function () {

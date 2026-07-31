@@ -71,6 +71,26 @@ input { touch-action: manipulation; }
 #drawCanvas { cursor: crosshair; z-index: 2; }
 #guideCanvas { z-index: 1; }
 
+/* 車款選擇 */
+.car-select {
+  display: flex; gap: 6px; justify-content: center;
+}
+.car-type-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card); color: var(--muted);
+  font-size: 13px; font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background .15s, color .15s, transform .1s;
+}
+.car-type-btn.active {
+  background: linear-gradient(135deg, var(--yellow), #ff9d00);
+  color: #111; border-color: var(--yellow);
+  transform: translateY(-1px);
+}
+
 /* 色盤 */
 .palette {
   display: flex; flex-wrap: wrap; gap: 6px;

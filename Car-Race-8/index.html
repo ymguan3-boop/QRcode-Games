@@ -35,6 +35,23 @@
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
+          <!-- 賽車深色輪廓：dilate 擴張 + 深色底 -->
+          <filter id="carOutline" x="-40%" y="-40%" width="180%" height="180%">
+            <feMorphology operator="dilate" radius="3" in="SourceAlpha" result="dilated"/>
+            <feFlood flood-color="#081120" flood-opacity="1"/>
+            <feComposite operator="in" in2="dilated" result="dark"/>
+            <feMerge>
+              <feMergeNode in="dark"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <!-- 終點棋盤紋 -->
+          <pattern id="checker" width="16" height="16" patternUnits="userSpaceOnUse">
+            <rect width="8" height="8" fill="#111"/>
+            <rect x="8" y="8" width="8" height="8" fill="#111"/>
+            <rect x="8" width="8" height="8" fill="#fff"/>
+            <rect y="8" width="8" height="8" fill="#fff"/>
+          </pattern>
         </defs>
 
         <!-- 天空 -->
@@ -59,10 +76,10 @@
         <ellipse cx="650" cy="430" rx="600" ry="345" fill="none" stroke="#2e7d3c" stroke-width="2" stroke-dasharray="4 10" opacity="0.4"/>
 
         <!-- 賽道影子 -->
-        <path id="trackShadow" fill="none" stroke="#1c2a1f" stroke-width="108" stroke-linecap="round" stroke-linejoin="round" opacity="0.22" transform="translate(0,12)"/>
+        <path id="trackShadow" fill="none" stroke="#1c2a1f" stroke-width="128" stroke-linecap="round" stroke-linejoin="round" opacity="0.22" transform="translate(0,12)"/>
 
         <!-- 賽道路面 -->
-        <path id="trackRoad" fill="none" stroke="url(#roadGrad)" stroke-width="100" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="trackRoad" fill="none" stroke="url(#roadGrad)" stroke-width="120" stroke-linecap="round" stroke-linejoin="round"/>
 
         <!-- 賽道外緣白線 -->
         <path id="trackEdgeOut" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
@@ -73,9 +90,9 @@
         <path id="trackCenter" fill="none" stroke="#ffd34d" stroke-width="3" stroke-dasharray="18 26" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
 
         <!-- 中央天橋陰影（交叉處） -->
-        <path id="bridgeMark" fill="none" stroke="#22303a" stroke-width="120" stroke-linecap="round" opacity="0.18" transform="translate(4,8)"/>
+        <path id="bridgeMark" fill="none" stroke="#22303a" stroke-width="140" stroke-linecap="round" opacity="0.18" transform="translate(4,8)"/>
 
-        <!-- START 旗幟區 -->
+        <!-- START / 起跑格位 / 發車燈 / 終點棋盤線 -->
         <g id="startGroup"></g>
 
         <!-- 觀眾席 -->

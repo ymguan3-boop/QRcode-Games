@@ -11,7 +11,7 @@
     halfW: 430,       // cos 振幅（左右）
     yScale: 1.5,      // y = halfW * yScale * sin*cos，控制環形高度
     samples: 520,
-    roadWidth: 100
+    roadWidth: 120
   };
   const VB_W = 1300;
   const VB_H = 800;
@@ -61,6 +61,24 @@
     return { d: d, points: pts };
   }
 
+  /* 車道橫向偏移路徑：以法向量將基準路徑左右平移，讓每台車走不同車道 */
+  function buildLanePoints(offset) {
+    const base = buildFigure8().points;
+    const out = [];
+    for (let i = 0; i < base.length; i++) {
+      const p = base[i];
+      const q = base[(i + 1) % base.length];
+      let dx = q.x - p.x;
+      let dy = q.y - p.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      out.push({
+        x: p.x + (-dy / len) * offset,
+        y: p.y + (dx / len) * offset
+      });
+    }
+    return out;
+  }
+
   function applyTrack() {
     const path = buildFigure8();
     const ids = ['trackShadow', 'trackRoad', 'trackEdgeOut', 'trackEdgeIn', 'trackCenter', 'bridgeMark', 'racePath'];
@@ -69,21 +87,73 @@
       if (node) node.setAttribute('d', path.d);
     });
 
-    // START/FINISH 旗幟置於路徑起點（最右側）
+    // START/FINISH 置於路徑起點（最右側）：終點棋盤線 + F1 起跑格位 + 發車燈
     const startP = path.points[0];
-    const startG = document.getElementById('startGroup');
-    if (startG) {
-      startG.innerHTML =
-        '<g transform="translate(' + startP.x + ',' + (startP.y - 8) + ')">' +
-          '<rect x="-34" y="-16" width="68" height="30" rx="4" fill="#e8eef5" stroke="#c00" stroke-width="2"/>' +
-          '<rect x="-30" y="-12" width="60" height="4" fill="#111"/>' +
-          '<rect x="-30" y="-8" width="60" height="4" fill="#fff"/>' +
-          '<rect x="-30" y="-4" width="60" height="4" fill="#111"/>' +
-          '<rect x="-30" y="0" width="60" height="4" fill="#fff"/>' +
-          '<rect x="-30" y="4" width="60" height="4" fill="#111"/>' +
-          '<text x="0" y="22" text-anchor="middle" font-size="11" font-weight="900" fill="#c00" font-family="Orbitron">START</text>' +
+    buildStartArea(startP);
+    startLightsLoop();
+  }
+
+  /* ═══════════ F1 起跑區（起點格位 P1~P5 + 終點棋盤線 + 發車燈） ═══════════ */
+  function buildStartArea(p) {
+    const g = document.getElementById('startGroup');
+    if (!g) return;
+    const cx = p.x;
+    const cy = p.y;
+    const roadW = TRACK.roadWidth;
+    const half = roadW / 2;
+    let html = '';
+
+    // 終點棋盤線：橫跨賽道、垂直於行進方向（起點處行進方向朝下）
+    html +=
+      '<g transform="translate(' + (cx - half) + ',' + (cy - 8) + ')">' +
+        '<rect width="' + roadW + '" height="16" fill="url(#checker)" stroke="#ffffff" stroke-width="2" opacity="0.95"/>' +
+      '</g>';
+
+    // F1 起跑格位 P1~P5（沿行進方向交錯排位，P1 最前方）
+    const slots = [
+      { y: -34, dx: 0 },
+      { y: -62, dx: -22 },
+      { y: -90, dx: 22 },
+      { y: -118, dx: -22 },
+      { y: -146, dx: 22 }
+    ];
+    slots.forEach(function (s, i) {
+      const n = i + 1;
+      html +=
+        '<g transform="translate(' + (cx + s.dx) + ',' + (cy + s.y) + ')">' +
+          '<rect x="-20" y="-11" width="40" height="22" rx="6" fill="#0e1c33" opacity="0.55" stroke="#ffd34d" stroke-width="1.5"/>' +
+          '<text x="0" y="5" text-anchor="middle" font-size="13" font-weight="900" fill="#ffd34d" font-family="Orbitron">P' + n + '</text>' +
         '</g>';
-    }
+    });
+
+    // 發車燈燈座（五燈式，模擬 F1 起跑燈）
+    html +=
+      '<g transform="translate(' + cx + ',' + (cy - 196) + ')">' +
+        '<rect x="-52" y="-14" width="104" height="28" rx="8" fill="#0a1322" stroke="#33507a" stroke-width="2"/>' +
+        '<circle class="start-light" cx="-36" cy="0" r="7" fill="#5a2530"/>' +
+        '<circle class="start-light" cx="-18" cy="0" r="7" fill="#5a2530"/>' +
+        '<circle class="start-light" cx="0" cy="0" r="7" fill="#5a2530"/>' +
+        '<circle class="start-light" cx="18" cy="0" r="7" fill="#5a2530"/>' +
+        '<circle class="start-light" cx="36" cy="0" r="7" fill="#5a2530"/>' +
+        '<text x="0" y="-22" text-anchor="middle" font-size="11" font-weight="900" fill="#ffffff" font-family="Orbitron" letter-spacing="2">START</text>' +
+      '</g>';
+
+    g.innerHTML = html;
+  }
+
+  function startLightsLoop() {
+    const lights = Array.prototype.slice.call(document.querySelectorAll('.start-light'));
+    if (!lights.length) return;
+    const reset = function () {
+      lights.forEach(function (l) { l.setAttribute('fill', '#5a2530'); });
+    };
+    reset();
+    const tl = gsap.timeline({ repeat: -1, repeatDelay: 4, onRepeat: reset });
+    lights.forEach(function (l, i) {
+      tl.call(function () { l.setAttribute('fill', '#ff2d3a'); }, [], i * 0.4);
+    });
+    tl.call(function () {}, [], lights.length * 0.4 + 1.2);   // 全亮 hold
+    tl.call(reset, [], lights.length * 0.4 + 1.6);            // 熄滅 → 起跑
   }
 
   /* ═══════════ 場景裝飾（白天） ═══════════ */
@@ -283,10 +353,13 @@
   }
 
   /* ═══════════ 賽車競賽 ═══════════ */
+  const CAR_SIZE = { sedan: 48, sports: 44, offroad: 56, muscle: 52 };
+  const LANE_OFFSETS = [-16, -8, 0, 8, 16];
+
   function handleCar(data) {
     if (!data || !data.imageData) return;
     retireOldestIfNeeded();
-    spawnCar(data.imageData, data.id);
+    spawnCar(data.imageData, data.id, data.carType);
   }
 
   function retireOldestIfNeeded() {
@@ -305,7 +378,7 @@
     }
   }
 
-  function spawnCar(imageData, id) {
+  function spawnCar(imageData, id, carType) {
     racerSeq++;
     const racerName = '車 ' + racerSeq;
 
@@ -318,6 +391,10 @@
 
     const img = unit.querySelector('.car-img');
     const nameEl = unit.querySelector('.car-name');
+
+    // 依車款設定車身寬度（跑車較小、越野較大）
+    const type = (carType && CAR_SIZE[carType]) ? carType : 'sedan';
+    img.style.width = CAR_SIZE[type] + 'px';
 
     const car = {
       id: id || Date.now().toString(36),
@@ -332,9 +409,11 @@
       activeCount++;
       updateCounts();
 
+      // 路線多樣化：每台車隨機挑選一條橫向偏移車道
+      const laneOffset = LANE_OFFSETS[Math.floor(Math.random() * LANE_OFFSETS.length)];
+      const lanePts = buildLanePoints(laneOffset);
       const pathOpts = {
-        path: '#racePath',
-        align: '#racePath',
+        path: lanePts,
         alignOrigin: [0.5, 0.5],
         autoRotate: true
       };
@@ -398,11 +477,12 @@
   function startDemoMode() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('demo') !== '1') return;
+    const demoTypes = Object.keys(CAR_SIZE);
     const demoCar = (function () {
       const c = document.createElement('canvas');
       c.width = 200; c.height = 384;
       const ctx = c.getContext('2d');
-      return function () {
+      return function (type) {
         const hue = Math.floor(Math.random() * 360);
         ctx.clearRect(0, 0, 200, 384);
         ctx.save();
@@ -434,8 +514,13 @@
       };
     })();
 
-    setTimeout(function () { spawnCar(demoCar()); }, 800);
-    setInterval(function () { spawnCar(demoCar()); }, 4200);
+    const spawnDemo = function () {
+      const type = demoTypes[Math.floor(Math.random() * demoTypes.length)];
+      spawnCar(demoCar(type), undefined, type);
+    };
+
+    setTimeout(spawnDemo, 800);
+    setInterval(spawnDemo, 4200);
   }
 
   /* ═══════════ 初始化 ═══════════ */

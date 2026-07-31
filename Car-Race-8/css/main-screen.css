@@ -118,14 +118,15 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
   position: absolute;
   /* 車型為頂視圖（鼻子朝上），旋轉 90 度使鼻子對準行進方向 */
   transform: translate(-50%, -50%) rotate(90deg);
-  /* 寬度縮小至單線寬度內（賽道單線約 50px 座標單位，車寬取 36） */
-  width: 36px;
+  /* 加大車身：配合加寬後的賽道（單線約 60px，車寬取 48） */
+  width: 48px;
   height: auto;
-  filter: drop-shadow(0 6px 10px rgba(20,50,90,.4));
+  /* 深色輪廓（SVG dilate）+ 陰影 */
+  filter: url(#carOutline) drop-shadow(0 6px 10px rgba(20,50,90,.45));
 }
 .car-name {
   position: absolute;
-  top: -24px; left: 0;
+  top: -28px; left: 0;
   white-space: nowrap;
   background: rgba(255,255,255,.92);
   border: 1px solid var(--border);
