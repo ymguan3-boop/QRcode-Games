@@ -8,6 +8,7 @@ QR Code 互動遊戲的集合，全部採用「大螢幕展示 + 手機掃碼互
 
 | 遊戲 | 說明 | 立即遊玩 |
 |------|------|----------|
+| [8字型賽車著色競賽](Car-Race-8/) | 手機為賽車著色，完成後送上大螢幕 8 字型賽道競速 | https://ymguan3-boop.github.io/QRcode-Games/Car-Race-8/ |
 | [AI 猜猜看](AI-Pictionary/) | 手機畫畫 → Gemini AI 猜測並評分 | https://ymguan3-boop.github.io/QRcode-Games/AI-Pictionary/ |
 
 ## 架構共通點

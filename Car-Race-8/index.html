@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>8字型賽道 - 賽車著色競賽</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main-screen.css?v=2">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ═══════════ 大螢幕 8 字型賽道場景（白天） ═══════════ -->
+    <div class="stage">
+      <svg id="sceneSvg" viewBox="0 0 1300 800" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4aa8e0"/>
+            <stop offset="60%" stop-color="#8fd0f5"/>
+            <stop offset="100%" stop-color="#ccebff"/>
+          </linearGradient>
+          <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#58b65c"/>
+            <stop offset="100%" stop-color="#3e9849"/>
+          </linearGradient>
+          <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#5f6a76"/>
+            <stop offset="100%" stop-color="#46505c"/>
+          </linearGradient>
+          <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- 天空 -->
+        <rect id="skyRect" x="0" y="0" width="1300" height="800" fill="url(#skyGrad)"/>
+
+        <!-- 太陽與光芒 -->
+        <circle cx="1120" cy="110" r="44" fill="#ffd76e" opacity="0.95"/>
+        <circle cx="1120" cy="110" r="64" fill="#ffe9a8" opacity="0.45"/>
+
+        <!-- 白雲 -->
+        <g id="cloudLayer"></g>
+
+        <!-- 遠方城市剪影 -->
+        <g id="cityLayer" opacity="0.8"></g>
+
+        <!-- 遠山 -->
+        <path d="M0 560 Q 180 490 360 545 T 700 540 T 1050 545 T 1300 540 L1300 620 L0 620 Z" fill="#9cc79a" opacity="0.9"/>
+        <path d="M0 600 Q 260 545 520 590 T 1000 585 T 1300 590 L1300 660 L0 660 Z" fill="#83b98a" opacity="0.9"/>
+
+        <!-- 草地 -->
+        <ellipse cx="650" cy="430" rx="640" ry="380" fill="url(#grassGrad)"/>
+        <ellipse cx="650" cy="430" rx="600" ry="345" fill="none" stroke="#2e7d3c" stroke-width="2" stroke-dasharray="4 10" opacity="0.4"/>
+
+        <!-- 賽道影子 -->
+        <path id="trackShadow" fill="none" stroke="#1c2a1f" stroke-width="108" stroke-linecap="round" stroke-linejoin="round" opacity="0.22" transform="translate(0,12)"/>
+
+        <!-- 賽道路面 -->
+        <path id="trackRoad" fill="none" stroke="url(#roadGrad)" stroke-width="100" stroke-linecap="round" stroke-linejoin="round"/>
+
+        <!-- 賽道外緣白線 -->
+        <path id="trackEdgeOut" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+        <!-- 賽道內緣白線 -->
+        <path id="trackEdgeIn" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>
+
+        <!-- 賽道中央黃虛線 -->
+        <path id="trackCenter" fill="none" stroke="#ffd34d" stroke-width="3" stroke-dasharray="18 26" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+
+        <!-- 中央天橋陰影（交叉處） -->
+        <path id="bridgeMark" fill="none" stroke="#22303a" stroke-width="120" stroke-linecap="round" opacity="0.18" transform="translate(4,8)"/>
+
+        <!-- START 旗幟區 -->
+        <g id="startGroup"></g>
+
+        <!-- 觀眾席 -->
+        <g id="standLayer"></g>
+
+        <!-- 看板 -->
+        <g id="boardLayer"></g>
+
+        <!-- 隱形 MotionPath -->
+        <path id="racePath" fill="none" stroke="none" d=""/>
+      </svg>
+
+      <!-- 賽車圖層 -->
+      <div id="carLayer" class="car-layer"></div>
+
+      <!-- 比賽資訊 HUD -->
+      <div class="hud hud-left">
+        <div class="hud-title">
+          <span class="hud-logo">&#127937;</span>
+          <div>
+            <h1>8字型賽道</h1>
+            <p>FIGURE-8 RACING</p>
+          </div>
+        </div>
+        <div id="statusBadge" class="status-badge offline">
+          <span class="dot"></span><span class="label"> 初始化中...</span>
+        </div>
+        <div class="hud-stat">
+          <span>賽道上車輛</span>
+          <b id="activeCars">0</b>
+        </div>
+        <div class="hud-stat">
+          <span>玩家連線</span>
+          <b id="playerCount">0</b>
+        </div>
+      </div>
+
+      <!-- QR Code 面板 -->
+      <div class="qr-panel">
+        <div class="qr-label">手機掃碼，著色你的賽車</div>
+        <div id="qrContainer" class="qr-frame"></div>
+        <div class="qr-hint">著色完成送出，賽車立刻駛入賽道競速</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="vendor/gsap.min.js?v=2"></script>
+  <script src="vendor/MotionPathPlugin.min.js?v=2"></script>
+  <script src="vendor/ably.min.js?v=2"></script>
+  <script src="vendor/qrcode.min.js?v=2"></script>
+  <script src="js/main-screen.js?v=2"></script>
+</body>
+</html>

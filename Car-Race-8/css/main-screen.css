@@ -1,0 +1,161 @@
+:root {
+  --bg: #bfe4fa;
+  --surface: rgba(255, 255, 255, .88);
+  --border: rgba(20, 60, 110, .16);
+  --text: #12325f;
+  --muted: #4a6a94;
+  --cyan: #0aa6e0;
+  --pink: #e8366f;
+  --yellow: #f5b800;
+  --green: #16a34a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: 'Noto Sans TC', 'Orbitron', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+}
+button { font: inherit; -webkit-tap-highlight-color: transparent; }
+
+.app { width: 100vw; height: 100vh; display: grid; place-items: center; }
+
+/* ═══════ 場景 ═══════ */
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #6fc0ef 0%, #bfe4fa 100%);
+}
+#sceneSvg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+
+.car-layer {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+
+/* ═══════ HUD（左） ═══════ */
+.hud {
+  position: absolute; top: 20px; left: 20px;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  backdrop-filter: blur(8px);
+  min-width: 210px;
+  box-shadow: 0 6px 24px rgba(18,50,95,.18);
+}
+.hud-title { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.hud-logo { font-size: 34px; filter: drop-shadow(0 0 8px rgba(245,184,0,.55)); }
+.hud-title h1 {
+  font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
+  font-size: 22px; font-weight: 900; letter-spacing: 2px;
+  background: linear-gradient(90deg, #0a6bd6, #e8366f);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hud-title p { font-size: 10px; letter-spacing: 3px; color: var(--muted); font-family: 'Orbitron'; }
+
+.status-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; margin-bottom: 12px;
+}
+.status-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: #8aa0bf; }
+.status-badge.online { background: rgba(22,163,74,.14); color: var(--green); }
+.status-badge.online .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-badge.ready { background: rgba(10,166,224,.14); color: var(--cyan); }
+.status-badge.ready .dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.status-badge.offline { background: rgba(239,68,68,.14); color: #c0392b; }
+.status-badge.offline .dot { background: #c0392b; }
+
+.hud-stat {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 2px; font-size: 13px; color: var(--muted);
+}
+.hud-stat b {
+  font-family: 'Orbitron'; font-size: 22px; color: var(--text);
+}
+.hud-stat:nth-child(5) b { color: var(--cyan); }
+.hud-stat:nth-child(6) b { color: var(--pink); }
+
+/* ═══════ QR 面板（右下） ═══════ */
+.qr-panel {
+  position: absolute; right: 20px; bottom: 20px;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  backdrop-filter: blur(8px);
+  width: 200px;
+  box-shadow: 0 6px 24px rgba(18,50,95,.18);
+}
+.qr-label { font-size: 12px; font-weight: 800; color: var(--cyan); }
+.qr-frame {
+  background: #fff; padding: 8px; border-radius: 12px;
+  width: 152px; height: 152px;
+  display: grid; place-items: center;
+  box-shadow: 0 0 16px rgba(10,166,224,.28);
+}
+.qr-frame img { display: block; }
+.qr-hint { font-size: 10px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+/* ═══════ 賽車元素 ═══════ */
+.car-unit {
+  position: absolute; top: 0; left: 0;
+  width: 0; height: 0;
+}
+.car-img {
+  position: absolute;
+  /* 車型為頂視圖（鼻子朝上），旋轉 90 度使鼻子對準行進方向 */
+  transform: translate(-50%, -50%) rotate(90deg);
+  /* 寬度縮小至單線寬度內（賽道單線約 50px 座標單位，車寬取 36） */
+  width: 36px;
+  height: auto;
+  filter: drop-shadow(0 6px 10px rgba(20,50,90,.4));
+}
+.car-name {
+  position: absolute;
+  top: -24px; left: 0;
+  white-space: nowrap;
+  background: rgba(255,255,255,.92);
+  border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; color: var(--text);
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(18,50,95,.15);
+}
+
+/* 舞台元素 */
+.stand {
+  position: absolute;
+  display: flex; flex-direction: column;
+  border: 2px solid #c9d6e8; border-radius: 6px;
+  overflow: hidden;
+  background: #f0f6ff;
+}
+.stand-roof { height: 8px; background: #7ea6d8; }
+.stand-seats {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(3, 6px);
+  gap: 3px;
+  padding: 4px;
+}
+.stand-seat { width: 6px; height: 6px; border-radius: 2px; background: #5b7db3; }
+
+@media (max-width: 1100px) {
+  .hud { min-width: 170px; padding: 12px; }
+  .hud-title h1 { font-size: 18px; }
+  .qr-panel { right: 12px; bottom: 12px; width: 170px; }
+  .qr-frame { width: 126px; height: 126px; }
+}
