@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>鞈質??</title>
+  <title>賽車著色</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/mobile.css?v=2">
@@ -15,10 +15,10 @@
       <div class="top-left">
         <span class="logo">&#127937;</span>
         <div>
-          <h1>鞈質??</h1>
+          <h1>賽車著色</h1>
         </div>
       </div>
-      <div id="connBadge" class="conn-badge offline">???銝?/div>
+      <div id="connBadge" class="conn-badge offline">連線中</div>
     </div>
 
     <div class="canvas-wrap">
@@ -33,29 +33,30 @@
     <div class="palette" id="palette"></div>
 
     <div class="tool-row">
-      <button id="undoBtn" class="tool-btn">&#8630; 敺拙?</button>
-      <button id="clearBtn" class="tool-btn">&#128465; 皜征</button>
-      <button id="eraserBtn" class="tool-btn">&#128065; 璈∠??/button>
+      <button id="undoBtn" class="tool-btn">&#8630; 復原</button>
+      <button id="clearBtn" class="tool-btn">&#128465; 清空</button>
+      <button id="eraserBtn" class="tool-btn">&#128065; 橡皮擦</button>
     </div>
 
     <div class="size-row">
-      <span>蝑</span>
+      <span>筆刷</span>
       <input type="range" id="sizeSlider" min="3" max="40" value="12" step="1">
       <output id="sizeDisplay">12</output>
     </div>
 
     <button id="submitBtn" class="submit-btn" disabled>
-      &#128663; ?鞈質??餅?鞈?    </button>
+      &#128663; 送出賽車去比賽
+    </button>
 
-    <div class="status-msg" id="statusMsg">隢??之?Ｗ? QR Code</div>
+    <div class="status-msg" id="statusMsg">請掃描大螢幕 QR Code</div>
   </div>
 
   <div id="successModal" class="modal hidden">
     <div class="modal-box">
       <div class="modal-emoji">&#127937;</div>
-      <h2>鞈質??箇?佗?</h2>
-      <p>雿?鞈質?撌脤?憭扯撟? 8 摮?鞈賡?嚗翰?祇??憟有嚗?/p>
-      <button id="againBtn" class="modal-btn">?銝??/button>
+      <h2>賽車出發啦！</h2>
+      <p>你的賽車已送上大螢幕的 8 字型賽道，快抬頭看它奔馳！</p>
+      <button id="againBtn" class="modal-btn">再畫一台</button>
     </div>
   </div>
 
