@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Flower 1 世界賽</title>
+  <title>Flower 1 世�?�?/title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=11">
+  <link rel="stylesheet" href="css/main-screen.css?v=12">
 </head>
 <body>
   <div class="app">
 
-    <!-- ═══════════ 大螢幕賽道場景（以 賽道.png 為背景） ═══════════ -->
+    <!-- ?��??��??��??��??��???大螢幕賽?�場?��?�?賽�?.png ?��??��? ?��??��??��??��??��???-->
     <div class="stage">
       <svg id="sceneSvg" viewBox="0 0 1300 800" preserveAspectRatio="xMidYMid meet">
         <defs>
@@ -20,15 +20,15 @@
             <stop offset="60%" stop-color="#8fd0f5"/>
             <stop offset="100%" stop-color="#ccebff"/>
           </linearGradient>
-          <!-- 賽車深色輪廓（極細）：dilate 0.375/0.25/0.125，深黑 -->
+          <!-- 賽�?深色輪�?（極細�?：dilate 0.19/0.13/0.06，深�?-->
           <filter id="carOutline" x="-50%" y="-50%" width="200%" height="200%">
-            <feMorphology operator="dilate" radius="0.375" in="SourceAlpha" result="outerDilate"/>
+            <feMorphology operator="dilate" radius="0.19" in="SourceAlpha" result="outerDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
             <feComposite operator="in" in2="outerDilate" result="outerBlack"/>
-            <feMorphology operator="dilate" radius="0.25" in="SourceAlpha" result="midDilate"/>
+            <feMorphology operator="dilate" radius="0.13" in="SourceAlpha" result="midDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
             <feComposite operator="in" in2="midDilate" result="midBlack"/>
-            <feMorphology operator="dilate" radius="0.125" in="SourceAlpha" result="innerDilate"/>
+            <feMorphology operator="dilate" radius="0.06" in="SourceAlpha" result="innerDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
             <feComposite operator="in" in2="innerDilate" result="innerBlack"/>
             <feMerge>
@@ -38,7 +38,7 @@
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <!-- 終點棋盤紋 -->
+          <!-- 終�?棋盤�?-->
           <pattern id="checker" width="16" height="16" patternUnits="userSpaceOnUse">
             <rect width="8" height="8" fill="#111"/>
             <rect x="8" y="8" width="8" height="8" fill="#111"/>
@@ -47,51 +47,54 @@
           </pattern>
         </defs>
 
-        <!-- 背景天空 -->
+        <!-- ?�景天空 -->
         <rect id="skyRect" x="0" y="0" width="1300" height="800" fill="url(#skyGrad)"/>
 
-        <!-- 賽道底圖（最底層背景，全畫面） -->
-        <image id="trackImage" href="賽道.png?v=11" x="0" y="0" width="1300" height="800" preserveAspectRatio="none"/>
+        <!-- 賽�?底�?（�?底層?�景，全?�面�?-->
+        <image id="trackImage" href="賽�?.png?v=12" x="0" y="0" width="1300" height="800" preserveAspectRatio="none"/>
 
-        <!-- 真正的跑道（在底圖上方） -->
+        <!-- ?�正?��??��??��??��??��? -->
         <g id="roadLayer"></g>
 
-        <!-- 起跑棋盤線（右側） -->
+        <!-- 起�?棋盤線�??�側�?-->
         <g id="startGroup"></g>
 
-        <!-- 賽車圖層（與跑道同一座標系） -->
+        <!-- 賽�??�層（�?跑�??��?座�?系�? -->
         <g id="carLayer" class="car-layer"></g>
       </svg>
 
-      <!-- ═══════════ 左側工具列（賽況 + QR 掃碼） ═══════════ -->
+      <!-- ?��??��??��??��??��???左側工具?��?賽�? + QR ?�碼�??��??��??��??��??��???-->
       <aside class="toolbar">
         <div class="toolbar-title">
           <span class="hud-logo">&#127937;</span>
           <div>
-            <h1>Flower 1 世界賽</h1>
+            <h1>Flower 1 世�?�?/h1>
             <p>FLOWER 1 WORLD CUP</p>
           </div>
         </div>
 
         <div id="statusBadge" class="status-badge offline">
-          <span class="dot"></span><span class="label"> 初始化中...</span>
+          <span class="dot"></span><span class="label"> ?��??�中...</span>
         </div>
 
         <div class="hud-stat">
-          <span>賽道上車輛</span>
+          <span>賽�?上�?�?/span>
           <b id="activeCars">0</b>
         </div>
         <div class="hud-stat">
-          <span>玩家連線</span>
+          <span>?�家???</span>
           <b id="playerCount">0</b>
         </div>
 
         <div class="toolbar-divider"></div>
 
         <div class="qr-block">
-          <div class="qr-label">手機掃碼，著色你的賽車</div>
+          <div class="qr-label">?��??�碼，�??��??�賽�?/div>
           <div id="qrContainer" class="qr-frame"></div>
-          <div class="qr-hint">著色完成送出，賽車立刻在起跑線就位出發</div>
+          <div class="qr-hint">?�色完�??�出，賽車�??�在起�?線就位出??/div>
+          <div class="qr-rule">
+            ???規�?：�??��??��??��??�面?�斷線�??�置 10 ?��??��??��???br>
+            ?��??��?<b>10</b> 位玩家�????          </div>
         </div>
       </aside>
     </div>
@@ -102,7 +105,7 @@
   <script src="vendor/MotionPathPlugin.min.js?v=2"></script>
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
-  <script src="js/track-path.js?v=11"></script>
-  <script src="js/main-screen.js?v=11"></script>
+  <script src="js/track-path.js?v=12"></script>
+  <script src="js/main-screen.js?v=12"></script>
 </body>
 </html>
