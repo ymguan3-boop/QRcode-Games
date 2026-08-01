@@ -15,14 +15,18 @@
 
   const guideCanvas = document.getElementById('guideCanvas');
   const drawCanvas = document.getElementById('drawCanvas');
+  const lineCanvas = document.getElementById('lineCanvas');
   const canvasBox = document.getElementById('canvasBox');
   const guideCtx = guideCanvas.getContext('2d');
   const drawCtx = drawCanvas.getContext('2d');
+  const lineCtx = lineCanvas.getContext('2d');
 
   guideCanvas.width = CANVAS_W;
   guideCanvas.height = CANVAS_H;
   drawCanvas.width = CANVAS_W;
   drawCanvas.height = CANVAS_H;
+  lineCanvas.width = CANVAS_W;
+  lineCanvas.height = CANVAS_H;
 
   const el = {
     connBadge: document.getElementById('connBadge'),
@@ -45,6 +49,7 @@
   let roomId = '';
 
   let maskImageData = null;
+  let maskColorable = null;   // 可著色的白色區塊（像素級 boolean）
   let maskLoaded = false;
   let maskLoadToken = 0;
   let currentCarType = 'sedan';
@@ -74,6 +79,8 @@
       const offCtx = offscreen.getContext('2d');
       offCtx.drawImage(maskImg, 0, 0, CANVAS_W, CANVAS_H);
       maskImageData = offCtx.getImageData(0, 0, CANVAS_W, CANVAS_H);
+      computeColorable(maskImageData);
+      drawLineArt();
       maskLoaded = true;
 
       // 引導圖：淡色輪廓 + 棋盤底
@@ -90,6 +97,39 @@
       setMsg('讀取賽車模型失敗，請重新整理', 'err');
     };
     maskImg.src = maskSrc();
+  }
+
+  /* 計算可著色區（白色車體內部），其餘為線條/外框不可著色 */
+  function computeColorable(imgData) {
+    const data = imgData.data;
+    maskColorable = new Uint8Array(CANVAS_W * CANVAS_H);
+    for (let i = 0, p = 0; p < data.length; p += 4, i++) {
+      const a = data[p + 3];
+      const r = data[p], g = data[p + 1], b = data[p + 2];
+      // 車體內部：不透明 且 偏白（低彩度、高亮度）＝可著色
+      if (a >= 128 && r >= 200 && g >= 200 && b >= 200) {
+        maskColorable[i] = 1;
+      }
+    }
+  }
+
+  /* 黑白線稿最上層：保留外框輪廓與內部黑線 */
+  function drawLineArt() {
+    if (!maskImageData) return;
+    lineCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    const data = maskImageData.data;
+    const out = lineCtx.createImageData(CANVAS_W, CANVAS_H);
+    const od = out.data;
+    for (let p = 0; p < data.length; p += 4) {
+      const a = data[p + 3];
+      if (a < 128) continue; // 透明＝遮罩外
+      const r = data[p], g = data[p + 1], b = data[p + 2];
+      const lum = (r + g + b) / 3;
+      if (lum < 160) { // 深色（黑線/輪廓）→ 純黑
+        od[p] = 0; od[p + 1] = 0; od[p + 2] = 0; od[p + 3] = 255;
+      }
+    }
+    lineCtx.putImageData(out, 0, 0);
   }
 
   function drawGuide() {
@@ -142,7 +182,7 @@
   function startDraw(e) {
     e.preventDefault();
     if (!maskLoaded) return;
-    drawCanvas.setPointerCapture(e.pointerId);
+    try { drawCanvas.setPointerCapture(e.pointerId); } catch (_) {}
     isDrawing = true;
     lastPoint = getPos(e);
     saveState();
@@ -180,14 +220,13 @@
     updateSubmitBtn();
   }
 
-  /* 像素級遮罩裁切：只保留車體輪廓內的筆觸 */
+  /* 像素級遮罩裁切：只保留白色車體區域內的筆觸 */
   function applyMaskInPlace() {
-    if (!maskImageData) return;
+    if (!maskColorable) return;
     const imageData = drawCtx.getImageData(0, 0, CANVAS_W, CANVAS_H);
     const pixels = imageData.data;
-    const mask = maskImageData.data;
-    for (let i = 3; i < pixels.length; i += 4) {
-      if (mask[i] < 128) pixels[i] = 0;
+    for (let i = 0, p = 3; i < CANVAS_W * CANVAS_H; i++, p += 4) {
+      if (!maskColorable[i]) pixels[p] = 0;
     }
     drawCtx.putImageData(imageData, 0, 0);
   }
@@ -330,8 +369,11 @@
       tempCanvas.width = OUT_W;
       tempCanvas.height = OUT_H;
       const tCtx = tempCanvas.getContext('2d');
+      // 第一層：著色內容（僅白區），整車輪廓裁切
       tCtx.drawImage(drawCanvas, 0, 0, OUT_W, OUT_H);
       applyMaskToScaled(tCtx, OUT_W, OUT_H);
+      // 第二層：黑白線稿置頂
+      tCtx.drawImage(lineCanvas, 0, 0, OUT_W, OUT_H);
 
       const base64 = tempCanvas.toDataURL('image/png');
       const msgId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);

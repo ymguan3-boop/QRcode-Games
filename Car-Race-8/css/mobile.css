@@ -61,7 +61,7 @@ input { touch-action: manipulation; }
   max-height: 100%;
   aspect-ratio: 619 / 1189;
 }
-#guideCanvas, #drawCanvas {
+#guideCanvas, #drawCanvas, #lineCanvas {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   display: block;
@@ -70,6 +70,7 @@ input { touch-action: manipulation; }
 }
 #drawCanvas { cursor: crosshair; z-index: 2; }
 #guideCanvas { z-index: 1; }
+#lineCanvas { z-index: 3; pointer-events: none; }
 
 /* 車款選擇 */
 .car-select {

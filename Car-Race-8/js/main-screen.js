@@ -19,15 +19,15 @@
   /* ── 賽道 ── */
   const TRACK = { roadWidth: 120 };
 
-  /* ── 賽車規格（×1.1 放大） ── */
+  /* ── 賽車規格（×1.2 放大） ── */
   const CAR = {
-    sports:  { w: 53, h: 87, mask: 'mask-sports.png'  },
-    offroad: { w: 59, h: 95, mask: 'mask-offroad.png' },
-    muscle:  { w: 57, h: 90, mask: 'mask-muscle.png'  },
+    sports:  { w: 64, h: 104, mask: 'mask-sports.png'  },
+    offroad: { w: 71, h: 114, mask: 'mask-offroad.png' },
+    muscle:  { w: 68, h: 108, mask: 'mask-muscle.png'  },
   };
 
-  /* ── 車道偏移（法向量方向，共 7 條） ── */
-  const LANE_OFFSETS = [-30, -20, -10, 0, 10, 20, 30];
+  /* ── 車道偏移（法向量方向，共 7 條，收窄避免超出路面） ── */
+  const LANE_OFFSETS = [-24, -16, -8, 0, 8, 16, 24];
 
   /* ── 房間代號 ── */
   const ROOM = new URLSearchParams(location.search).get('room') || Math.random().toString(36).slice(2, 7);
@@ -118,15 +118,15 @@
   function buildRoad() {
     el.roadLayer.innerHTML = '';
 
-    // 瀝青路面
+    // 路面（與底圖路面同色調，半透明疊加使輪廓清楚）
     el.roadLayer.appendChild(elSvg('path', {
       d: centerPathD(), fill: 'none',
-      stroke: '#4a4a52', 'stroke-width': TRACK.roadWidth,
-      'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.9,
+      stroke: '#c9a86a', 'stroke-width': TRACK.roadWidth,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.45,
     }));
 
     // 路緣線（兩側）
-    [TRACK.roadWidth / 2 - 6, -(TRACK.roadWidth / 2 - 6)].forEach(function (off) {
+    [TRACK.roadWidth / 2 - 8, -(TRACK.roadWidth / 2 - 8)].forEach(function (off) {
       el.roadLayer.appendChild(elSvg('path', {
         d: offsetPathD(off), fill: 'none',
         stroke: '#f4f4f6', 'stroke-width': 4,
