@@ -1,12 +1,15 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v5
+   Car-Race-8 · main-screen.js v7
    ──────────────────────────────────────────────────────────
-   - 賽道圖背景（賽道.png），右側起跑棋盤線
-   - 無飄移：7 條固定車道（法向量偏移 ±30/±15/0）
-   - 車輛嚴格行走在道路上
+   - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
+   - 賽車以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
+   - 起跑線垂直於跑道切線，配合真正的跑道角度
+   - 無飄移：7 條固定車道（法向量偏移）
    ============================================================ */
 (function () {
   'use strict';
+
+  const NS = 'http://www.w3.org/2000/svg';
 
   /* ── 全域 ── */
   const GSAP   = window.gsap;
@@ -14,7 +17,7 @@
   if (GSAP && PLUGIN) GSAP.registerPlugin(PLUGIN);
 
   /* ── 賽道 ── */
-  const TRACK = { roadWidth: 120, centerOffset: 0 };
+  const TRACK = { roadWidth: 120 };
 
   /* ── 賽車規格（×1.1 放大） ── */
   const CAR = {
@@ -26,7 +29,7 @@
   /* ── 車道偏移（法向量方向，共 7 條） ── */
   const LANE_OFFSETS = [-30, -20, -10, 0, 10, 20, 30];
 
-  /* ── 房間代號（畫面自己的 URL 參數，或隨機產生） ── */
+  /* ── 房間代號 ── */
   const ROOM = new URLSearchParams(location.search).get('room') || Math.random().toString(36).slice(2, 7);
 
   /* ── 比賽參數 ── */
@@ -34,7 +37,6 @@
     laps: 1,
     lapDur: { min: 13, max: 18 },
     maxCars: 12,
-    fadeAfterFinish: 0.8,
     minGap: 40,
     startStagger: 0.005,
     startProgress: 0.0,
@@ -42,13 +44,14 @@
 
   /* ── DOM ── */
   const el = {
-    svg:           document.getElementById('sceneSvg'),
-    startGroup:    document.getElementById('startGroup'),
-    carLayer:      document.getElementById('carLayer'),
-    statusBadge:   document.getElementById('statusBadge'),
-    activeCars:    document.getElementById('activeCars'),
-    playerCount:   document.getElementById('playerCount'),
-    qrContainer:   document.getElementById('qrContainer'),
+    svg:         document.getElementById('sceneSvg'),
+    roadLayer:   document.getElementById('roadLayer'),
+    startGroup:  document.getElementById('startGroup'),
+    carLayer:    document.getElementById('carLayer'),
+    statusBadge: document.getElementById('statusBadge'),
+    activeCars:  document.getElementById('activeCars'),
+    playerCount: document.getElementById('playerCount'),
+    qrContainer: document.getElementById('qrContainer'),
   };
 
   /* ── 賽道座標 ── */
@@ -78,35 +81,7 @@
     return { nx: -dy / len, ny: dx / len };
   }
 
-  /* ── 判斷 t 是否在賽道上（簡易距離檢查） ── */
-  function isOnTrack(x, y, threshold) {
-    const thr = threshold || TRACK.roadWidth * 0.55;
-    for (let i = 0; i < trackLen(); i += 3) {
-      const p = trackXY(i);
-      const dx = x - p.x, dy = y - p.y;
-      if (dx * dx + dy * dy < thr * thr) return true;
-    }
-    return false;
-  }
-
-  /* ── 偏移路徑（固定車道） ── */
-  function computeLanePaths() {
-    const lanes = [];
-    LANE_OFFSETS.forEach(function (offset) {
-      const pts = [];
-      for (let t = 0; t < trackLen(); t++) {
-        const pt = trackXY(t);
-        const n  = trackNormal(t);
-        pts.push(pt.x + n.nx * offset);
-        pts.push(pt.y + n.ny * offset);
-      }
-      lanes.push(pts);
-    });
-    return lanes;
-  }
-  const LANES = computeLanePaths();
-
-  /* ── 決定起跑進度（右側垂直路段，x 最大處，再上移約 1cm ≈ 30 單位） ── */
+  /* ── 決定起跑進度（右側垂直路段，x 最大處，再上移約 1cm） ── */
   let START_IDX = 0;
   (function findStartIdx() {
     let maxX = -Infinity;
@@ -117,57 +92,104 @@
   const START_PROG = (START_IDX - 6.4) / trackLen();
   RACE.startProgress = START_PROG;
 
-  /* ── 賽車圖層 ── */
+  /* ═══════════ 真正的跑道（繪於底圖上方） ═══════════ */
+  function offsetPathD(offset) {
+    const pts = [];
+    for (let i = 0; i < trackLen(); i++) {
+      const n = trackNormal(i / trackLen());
+      pts.push((path[i * 2] + n.nx * offset).toFixed(1) + ',' + (path[i * 2 + 1] + n.ny * offset).toFixed(1));
+    }
+    return 'M ' + pts.join(' L ');
+  }
+  function centerPathD() {
+    const pts = [];
+    for (let i = 0; i < trackLen(); i++) {
+      pts.push(path[i * 2].toFixed(1) + ',' + path[i * 2 + 1].toFixed(1));
+    }
+    return 'M ' + pts.join(' L ');
+  }
+
+  function elSvg(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    return e;
+  }
+
+  function buildRoad() {
+    el.roadLayer.innerHTML = '';
+
+    // 瀝青路面
+    el.roadLayer.appendChild(elSvg('path', {
+      d: centerPathD(), fill: 'none',
+      stroke: '#4a4a52', 'stroke-width': TRACK.roadWidth,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.9,
+    }));
+
+    // 路緣線（兩側）
+    [TRACK.roadWidth / 2 - 6, -(TRACK.roadWidth / 2 - 6)].forEach(function (off) {
+      el.roadLayer.appendChild(elSvg('path', {
+        d: offsetPathD(off), fill: 'none',
+        stroke: '#f4f4f6', 'stroke-width': 4,
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+      }));
+    });
+
+    // 中央虛線
+    el.roadLayer.appendChild(elSvg('path', {
+      d: centerPathD(), fill: 'none',
+      stroke: '#e8e8ea', 'stroke-width': 3,
+      'stroke-dasharray': '14 18',
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }));
+  }
+
+  /* ═══════════ 起跑棋盤線（垂直於跑道切線） ═══════════ */
+  function buildFinishLine() {
+    const t = START_PROG;
+    const pt = trackPt(t);
+    const n  = trackNormal(t);
+    const halfW = TRACK.roadWidth / 2 + 5;
+
+    const rx = pt.x + n.nx * halfW, ry = pt.y + n.ny * halfW;
+    const lx = pt.x - n.nx * halfW, ly = pt.y - n.ny * halfW;
+    const ang = Math.atan2(ry - ly, rx - lx) * 180 / Math.PI;
+    const len = Math.sqrt((rx - lx) * (rx - lx) + (ry - ly) * (ry - ly));
+
+    el.startGroup.innerHTML = '';
+    el.startGroup.appendChild(elSvg('rect', {
+      x: String(-len / 2), y: '-6', width: String(len), height: '12',
+      fill: 'url(#checker)', stroke: '#000', 'stroke-width': '1.5',
+      transform: 'translate(' + ((rx + lx) / 2).toFixed(1) + ',' + ((ry + ly) / 2).toFixed(1) + ') rotate(' + ang.toFixed(1) + ')',
+    }));
+  }
+
+  /* ═══════════ 賽車（SVG，與跑道同一座標系） ═══════════ */
   const carState = new Map();
   let nextCarId = 0;
 
-  function makeCarSvg(type, imgData) {
+  function createCarEl(type, imgData) {
     const spec = CAR[type];
-    const ns = 'http://www.w3.org/2000/svg';
-    const g = document.createElementNS(ns, 'g');
-    const img = document.createElementNS(ns, 'image');
-    img.setAttribute('href', imgData || ('assets/' + spec.mask));
-    img.setAttribute('x', String(-spec.w / 2));
-    img.setAttribute('y', String(-spec.h / 2));
-    img.setAttribute('width', String(spec.w));
-    img.setAttribute('height', String(spec.h));
-    img.setAttribute('filter', 'url(#carOutline)');
-    g.appendChild(img);
+    const g = elSvg('g', { class: 'car-wrap' });
+    const scaleG = elSvg('g', { class: 'car-scale' });
+    const img = elSvg('image', {
+      href: imgData || ('assets/' + spec.mask),
+      x: String(-spec.w / 2), y: String(-spec.h / 2),
+      width: String(spec.w), height: String(spec.h),
+      filter: 'url(#carOutline)',
+    });
+    scaleG.appendChild(img);
+    g.appendChild(scaleG);
+    el.carLayer.appendChild(g);
     return g;
   }
 
-  function createCarEl(type, imgData) {
-    const wrap = document.createElement('div');
-    wrap.className = 'car-wrap';
-
-    const svgWrap = document.createElement('div');
-    svgWrap.style.cssText = 'position:absolute;overflow:visible;pointer-events:none;';
-    svgWrap.appendChild(makeCarSvg(type, imgData));
-    wrap.appendChild(svgWrap);
-    el.carLayer.appendChild(wrap);
-    return wrap;
-  }
-
-  /* ── 距離檢查 ── */
-  function isLaneOccupied(laneIdx, progress) {
-    for (const s of carState.values()) {
-      if (s.laneIdx !== laneIdx) continue;
-      if (Math.abs(s.progress - progress) < RACE.minGap / trackLen()) return true;
-    }
-    return false;
-  }
-
-  /* ── 發車 ── */
   function spawnCar(imgData, carType) {
     if (carState.size >= RACE.maxCars) { retireOldest(); }
 
-    const laneIdx = Math.floor(Math.random() * LANES.length);
-    const spec = CAR[carType];
-
+    const laneIdx = Math.floor(Math.random() * LANE_OFFSETS.length);
     const carEl = createCarEl(carType, imgData);
     const idx = nextCarId++;
 
-    // 先停在起跑線，再出發
     const stagger = (carState.size % 7) * RACE.startStagger;
     const s = {
       el: carEl,
@@ -182,26 +204,19 @@
     applyTrack(s);
 
     const dur = RACE.lapDur.min + Math.random() * (RACE.lapDur.max - RACE.lapDur.min);
-    const HOLD = 1.4; // 起跑線停留秒數
+    const HOLD = 1.4;
+    const scaleG = carEl.querySelector('.car-scale');
 
-    // 彈出式出現（放大＋淡入），讓玩家清楚看見自己的車
-    GSAP.fromTo(carEl,
+    // 彈出式出現
+    GSAP.fromTo(scaleG,
       { opacity: 0, scale: 0.5 },
-      {
-        opacity: 1,
-        scale: 1,
-        duration: 0.5,
-        ease: 'back.out(2)',
-        transformOrigin: 'center center',
-      }
+      { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }
     );
 
     const tl = GSAP.timeline({ onComplete: function () { finishCar(idx); } });
 
-    // 在起跑線停 HOLD 秒
     tl.to({}, { duration: HOLD }, 0);
 
-    // 沿路徑移動（起跑線出發，跑完 1 圈回到起跑線）
     tl.to({ p: s.progress }, {
       p: RACE.startProgress + RACE.laps,
       duration: dur,
@@ -214,24 +229,18 @@
       },
     }, HOLD);
 
-    // 完賽淡出
-    tl.to(carEl, {
-      opacity: 0,
-      duration: 0.4,
-    }, HOLD + dur + 0.2);
+    tl.to(scaleG, { opacity: 0, duration: 0.4 }, HOLD + dur + 0.2);
   }
 
   function applyTrack(s) {
-    const pt  = trackPt(s.progress);
-    const n   = trackNormal(s.progress);
-    const x   = pt.x + n.nx * LANE_OFFSETS[s.laneIdx];
-    const y   = pt.y + n.ny * LANE_OFFSETS[s.laneIdx];
+    const pt = trackPt(s.progress);
+    const n  = trackNormal(s.progress);
+    const x  = pt.x + n.nx * LANE_OFFSETS[s.laneIdx];
+    const y  = pt.y + n.ny * LANE_OFFSETS[s.laneIdx];
     const nxt = trackPt(s.progress + 0.002);
-    const dx  = nxt.x - pt.x;
-    const dy  = nxt.y - pt.y;
+    const dx = nxt.x - pt.x, dy = nxt.y - pt.y;
     const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-    const spec = CAR[s.carType] || CAR.sports;
-    s.el.style.transform = `translate(${x - spec.w / 2}px,${y - spec.h / 2}px) rotate(${ang + 90}deg)`;
+    s.el.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') rotate(' + (ang + 90).toFixed(1) + ')');
     syncCarLayer();
   }
 
@@ -239,59 +248,26 @@
     const s = carState.get(idx);
     if (!s) return;
     s.done = true;
-    s.el.remove();
+    s.el.parentNode && s.el.parentNode.removeChild(s.el);
     carState.delete(idx);
   }
 
   function retireOldest() {
     let oldest = null;
     for (const [k, v] of carState) {
-      if (v.done) { v.el.remove(); carState.delete(k); continue; }
+      if (v.done) { v.el.parentNode && v.el.parentNode.removeChild(v.el); carState.delete(k); continue; }
       if (!oldest || v.progress > oldest.progress) oldest = v;
     }
   }
 
   function syncCarLayer() { el.activeCars.textContent = carState.size; }
 
-  /* ── 起跑棋盤線（右側，上移約 1cm） ── */
-  function buildFinishLine() {
-    const t = START_PROG;
-    const pt = trackPt(t);
-    const n  = trackNormal(t);
-    const halfW = TRACK.roadWidth / 2 + 5;
-
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-    // 橫跨道路的棋盤紋矩形
-    const rx = pt.x + n.nx * halfW;
-    const ry = pt.y + n.ny * halfW;
-    const lx = pt.x - n.nx * halfW;
-    const ly = pt.y - n.ny * halfW;
-    const ang = Math.atan2(ry - ly, rx - lx) * 180 / Math.PI;
-    const len = Math.sqrt((rx - lx) * (rx - lx) + (ry - ly) * (ry - ly));
-
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', String(-len / 2));
-    rect.setAttribute('y', '-6');
-    rect.setAttribute('width', String(len));
-    rect.setAttribute('height', '12');
-    rect.setAttribute('fill', 'url(#checker)');
-    rect.setAttribute('stroke', '#000');
-    rect.setAttribute('stroke-width', '1.5');
-    rect.setAttribute('transform', `translate(${(rx + lx) / 2},${(ry + ly) / 2}) rotate(${ang + 5})`);
-    g.appendChild(rect);
-
-    el.startGroup.innerHTML = '';
-    el.startGroup.appendChild(g);
-  }
-
   /* ── QR ── */
   function showQR() {
     el.qrContainer.innerHTML = '';
-    // 指向 mobile.html 並帶入房間代號（不重複加 carrace- 前綴）
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
     const url = base + 'mobile.html?room=' + encodeURIComponent(ROOM);
-    new QRCode(el.qrContainer, { text: url, width: 160, height: 160 });
+    new QRCode(el.qrContainer, { text: url, width: 112, height: 112 });
   }
 
   /* ── Ably ── */
@@ -336,6 +312,7 @@
   }
 
   /* ── init ── */
+  buildRoad();
   buildFinishLine();
   showQR();
   setupAbly();

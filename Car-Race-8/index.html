@@ -6,7 +6,7 @@
   <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=6">
+  <link rel="stylesheet" href="css/main-screen.css?v=7">
 </head>
 <body>
   <div class="app">
@@ -54,15 +54,18 @@
         <!-- 背景天空 -->
         <rect id="skyRect" x="0" y="0" width="1300" height="800" fill="url(#skyGrad)"/>
 
-        <!-- 賽道底圖（1591×988 全場景，對齊 TRACK_PATH 座標） -->
+        <!-- 賽道底圖（最底層背景） -->
         <image id="trackImage" href="賽道.png" x="5.85" y="0" width="1288.3" height="800" preserveAspectRatio="none"/>
+
+        <!-- 真正的跑道（在底圖上方） -->
+        <g id="roadLayer"></g>
 
         <!-- 起跑棋盤線（右側） -->
         <g id="startGroup"></g>
-      </svg>
 
-      <!-- 賽車圖層 -->
-      <div id="carLayer" class="car-layer"></div>
+        <!-- 賽車圖層（與跑道同一座標系） -->
+        <g id="carLayer" class="car-layer"></g>
+      </svg>
 
       <!-- ═══════════ 左側工具列（賽況 + QR 掃碼） ═══════════ -->
       <aside class="toolbar">
@@ -104,6 +107,6 @@
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
   <script src="js/track-path.js?v=3"></script>
-  <script src="js/main-screen.js?v=6"></script>
+  <script src="js/main-screen.js?v=7"></script>
 </body>
 </html>
