@@ -4,13 +4,8 @@
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
   const channelName = function (room) { return 'carrace-' + room; };
 
-  /* ═══════════ 8 字型賽道參數 ═══════════ */
+  /* ═══════════ 賽道參數 ═══════════ */
   const TRACK = {
-    centerX: 650,
-    centerY: 400,
-    halfW: 430,       // cos 振幅（左右）
-    yScale: 1.5,      // y = halfW * yScale * sin*cos，控制環形高度
-    samples: 520,
     roadWidth: 120
   };
   const VB_W = 1300;
@@ -22,7 +17,12 @@
     lapDurMin: 13,           // 每圈秒數下限
     lapDurMax: 18,           // 每圈秒數上限
     maxCars: 12,             // 賽道同時車輛上限
-    fadeAfterFinish: 0.8     // 完賽後淡出秒數
+    fadeAfterFinish: 0.8,    // 完賽後淡出秒數
+    startStagger: 0.035,     // 起跑佇列：每台車沿路徑後退比例
+    driftMax: 8,             // 隨機飄移最大橫向偏移（px，限制於道路半寬內）
+    driftAmpMax: 6,          // 飄移正弦波振幅上限
+    driftWaves: 5,           // 飄移正弦波數量
+    minGap: 44               // 車距下限（px），低於此值後車自動減速
   };
 
   const el = {
@@ -44,51 +44,47 @@
 
   gsap.registerPlugin(MotionPathPlugin);
 
-  /* ═══════════ 8 字型路徑產生 ═══════════ */
-  function buildFigure8() {
-    const { centerX, centerY, halfW, yScale, samples } = TRACK;
+  /* ═══════════ 賽道路徑（取自 js/track-path.js，viewBox 座標） ═══════════ */
+  function getTrackPoints() {
+    const a = window.TRACK_PATH || [];
     const pts = [];
-    for (let i = 0; i < samples; i++) {
-      const t = (i / samples) * Math.PI * 2;
-      pts.push({
-        x: centerX + halfW * Math.cos(t),
-        y: centerY + halfW * yScale * Math.sin(t) * Math.cos(t)
-      });
+    for (let i = 0; i < a.length; i += 2) {
+      pts.push({ x: a[i], y: a[i + 1] });
     }
-    const d = pts.map(function (p, i) {
-      return (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
-    }).join(' ') + ' Z';
-    return { d: d, points: pts };
+    return pts;
   }
 
-  /* 車道橫向偏移路徑：以法向量將基準路徑左右平移，讓每台車走不同車道 */
-  function buildLanePoints(offset) {
-    const base = buildFigure8().points;
+  /* 隨機飄移路徑：以法向量將基準路徑左右平移，疊加隨機車道偏移與正弦波飄移 */
+  function buildDriftPath(laneOffset, driftAmp, driftWaves, phase) {
+    const base = getTrackPoints();
+    const n = base.length;
     const out = [];
-    for (let i = 0; i < base.length; i++) {
+    for (let i = 0; i < n; i++) {
       const p = base[i];
-      const q = base[(i + 1) % base.length];
+      const q = base[(i + 1) % n];
       let dx = q.x - p.x;
       let dy = q.y - p.y;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const t = i / n;
+      const wobble = Math.sin(t * Math.PI * 2 * driftWaves + phase) * driftAmp;
+      const off = laneOffset + wobble;
       out.push({
-        x: p.x + (-dy / len) * offset,
-        y: p.y + (dx / len) * offset
+        x: p.x + (-dy / len) * off,
+        y: p.y + (dx / len) * off
       });
     }
     return out;
   }
 
-  function applyTrack() {
-    const path = buildFigure8();
-    const ids = ['trackShadow', 'trackRoad', 'trackEdgeOut', 'trackEdgeIn', 'trackCenter', 'bridgeMark', 'racePath'];
-    ids.forEach(function (id) {
-      const node = document.getElementById(id);
-      if (node) node.setAttribute('d', path.d);
-    });
+  /* 起跑佇列：將路徑陣列旋轉，使車從起跑線後方某處開始（前後錯開） */
+  function rotatePath(pts, frac) {
+    const n = pts.length;
+    const k = Math.round(frac * n) % n;
+    return pts.slice(k).concat(pts.slice(0, k));
+  }
 
-    // START/FINISH 置於路徑起點（最右側）：終點棋盤線 + F1 起跑格位 + 發車燈
-    const startP = path.points[0];
+  function applyTrack() {
+    const startP = getTrackPoints()[0];
     buildStartArea(startP);
     startLightsLoop();
   }
@@ -156,71 +152,7 @@
     tl.call(reset, [], lights.length * 0.4 + 1.6);            // 熄滅 → 起跑
   }
 
-  /* ═══════════ 場景裝飾（白天） ═══════════ */
-  function buildClouds() {
-    const layer = document.getElementById('cloudLayer');
-    if (!layer) return;
-    const clouds = [
-      { x: 80, y: 60, s: 1 }, { x: 330, y: 130, s: 0.7 }, { x: 520, y: 45, s: 1.2 },
-      { x: 780, y: 150, s: 0.8 }, { x: 960, y: 60, s: 1.1 }, { x: 1160, y: 140, s: 0.7 }
-    ];
-    let html = '';
-    clouds.forEach(function (c) {
-      html +=
-        '<g transform="translate(' + c.x + ',' + c.y + ') scale(' + c.s + ')">' +
-          '<ellipse cx="0" cy="0" rx="46" ry="18" fill="#ffffff" opacity="0.9"/>' +
-          '<ellipse cx="-26" cy="6" rx="24" ry="13" fill="#ffffff" opacity="0.9"/>' +
-          '<ellipse cx="28" cy="6" rx="26" ry="14" fill="#ffffff" opacity="0.9"/>' +
-        '</g>';
-    });
-    layer.innerHTML = html;
-  }
-
-  function buildCity() {
-    const layer = document.getElementById('cityLayer');
-    if (!layer) return;
-    const buildings = [
-      [60, 60], [120, 95], [200, 55], [270, 130], [360, 70], [430, 150],
-      [520, 90], [600, 45], [670, 120], [750, 65], [830, 145], [910, 80],
-      [990, 55], [1060, 125], [1140, 75], [1210, 105]
-    ];
-    let html = '';
-    buildings.forEach(function (b) {
-      const h = b[1];
-      const w = 46 + Math.random() * 20;
-      html += '<rect x="' + b[0] + '" y="' + (500 - h) + '" width="' + w + '" height="' + h + '" rx="2" fill="#b7c6d8"/>';
-      for (let wy = 0; wy < h - 14; wy += 16) {
-        for (let wx = 0; wx < w - 10; wx += 14) {
-          if (Math.random() > 0.4) {
-            html += '<rect x="' + (b[0] + 5 + wx) + '" y="' + (500 - h + 6 + wy) + '" width="6" height="8" rx="1" fill="#e6f1ff" opacity="0.85"/>';
-          }
-        }
-      }
-    });
-    layer.innerHTML = html;
-  }
-
-  function buildStands() {
-    const stage = document.querySelector('.stage');
-    const specs = [
-      { top: '420px', left: '24px', cols: 7 },
-      { top: '420px', right: '24px', cols: 7 }
-    ];
-    specs.forEach(function (s) {
-      const stand = document.createElement('div');
-      stand.className = 'stand';
-      stand.style.top = s.top;
-      stand.style.left = s.left;
-      stand.style.right = s.right;
-      let seats = '';
-      for (let c = 0; c < s.cols; c++) {
-        seats += '<span class="stand-seat"></span>';
-      }
-      stand.innerHTML = '<div class="stand-roof"></div><div class="stand-seats">' + seats.repeat(3) + '</div>';
-      stage.appendChild(stand);
-    });
-  }
-
+  /* ═══════════ 看板 ═══════════ */
   function buildBoard() {
     const svgNS = 'http://www.w3.org/2000/svg';
     const board = document.getElementById('boardLayer');
@@ -243,7 +175,7 @@
     text.setAttribute('font-weight', '900');
     text.setAttribute('fill', '#12325f');
     text.setAttribute('font-family', 'Orbitron, Noto Sans TC');
-    text.textContent = '8字型大獎賽';
+    text.textContent = 'Flower 1 世界賽';
     board.appendChild(text);
   }
 
@@ -353,8 +285,9 @@
   }
 
   /* ═══════════ 賽車競賽 ═══════════ */
-  const CAR_SIZE = { sedan: 48, sports: 44, offroad: 56, muscle: 52 };
-  const LANE_OFFSETS = [-16, -8, 0, 8, 16];
+  const CAR_SIZE = { sports: 60, offroad: 70, muscle: 64 };
+
+  const activeRacers = [];
 
   function handleCar(data) {
     if (!data || !data.imageData) return;
@@ -366,6 +299,8 @@
     const activeEls = el.carLayer.querySelectorAll('.car-unit');
     if (activeEls.length >= RACE.maxCars) {
       const oldest = activeEls[0];
+      const idx = activeRacers.findIndex(function (r) { return r.unit === oldest; });
+      if (idx >= 0) activeRacers.splice(idx, 1);
       if (oldest && oldest._tl) {
         oldest._tl.kill();
         oldest._tl = null;
@@ -393,13 +328,14 @@
     const nameEl = unit.querySelector('.car-name');
 
     // 依車款設定車身寬度（跑車較小、越野較大）
-    const type = (carType && CAR_SIZE[carType]) ? carType : 'sedan';
+    const type = (carType && CAR_SIZE[carType]) ? carType : 'sports';
     img.style.width = CAR_SIZE[type] + 'px';
 
     const car = {
       id: id || Date.now().toString(36),
       unit: unit,
       img: img,
+      type: type,
       spawnTime: Date.now()
     };
 
@@ -409,11 +345,21 @@
       activeCount++;
       updateCounts();
 
-      // 路線多樣化：每台車隨機挑選一條橫向偏移車道
-      const laneOffset = LANE_OFFSETS[Math.floor(Math.random() * LANE_OFFSETS.length)];
-      const lanePts = buildLanePoints(laneOffset);
+      // 起跑佇列：依車款大小決定前後間距（越寬的車退越後面），沿路徑後退錯開
+      const halfCar = CAR_SIZE[type] / 2;
+      const spacing = halfCar / VB_W;
+      const queueGap = RACE.startStagger + spacing;
+      const startFrac = activeRacers.length * queueGap;
+
+      // 隨機車道偏移 + 隨機飄移（正弦波），幅度控制於道路半寬內
+      const laneOffset = (Math.random() * 2 - 1) * RACE.driftMax;
+      const driftAmp = RACE.driftAmpMax * (0.3 + Math.random() * 0.7);
+      const driftWaves = RACE.driftWaves;
+      const phase = Math.random() * Math.PI * 2;
+      const driftPts = buildDriftPath(laneOffset, driftAmp, driftWaves, phase);
+      const pathPts = rotatePath(driftPts, startFrac);
       const pathOpts = {
-        path: lanePts,
+        path: pathPts,
         alignOrigin: [0.5, 0.5],
         autoRotate: true
       };
@@ -429,17 +375,42 @@
         if (nameEl) gsap.set(nameEl, { rotation: -r, xPercent: -50 });
       };
 
+      // 行進間車距下限：若與其他車太近且自己在後，自動減速讓行（遵守不重疊原則）
+      const spacingGuard = function () {
+        counterRotate();
+        const mx = gsap.getProperty(unit, 'x') || 0;
+        const my = gsap.getProperty(unit, 'y') || 0;
+        const myProg = tl.progress();
+        let target = 1;
+        for (let i = 0; i < activeRacers.length; i++) {
+          const o = activeRacers[i];
+          if (o === car || !o.unit || o.unit.parentNode !== unit.parentNode) continue;
+          const ox = gsap.getProperty(o.unit, 'x');
+          const oy = gsap.getProperty(o.unit, 'y');
+          if (ox === undefined || oy === undefined) continue;
+          const d = Math.hypot(mx - ox, my - oy);
+          if (d < RACE.minGap) {
+            const theirProg = (o._tl && o._tl.progress) ? o._tl.progress() : 0;
+            if (myProg < theirProg) target = Math.min(target, 0.35);
+          }
+        }
+        const cur = tl.timeScale();
+        const next = cur + (target - cur) * 0.2;
+        if (Math.abs(next - cur) > 0.005) tl.timeScale(next);
+      };
+
       for (let i = 0; i < RACE.laps; i++) {
         tl.to(unit, {
           duration: lapDur,
           ease: 'none',
           motionPath: pathOpts,
-          onUpdate: counterRotate
+          onUpdate: spacingGuard
         }, i === 0 ? 0 : '-=0.01');
       }
 
       unit._tl = tl;
-      counterRotate();
+      activeRacers.push(car);
+      spacingGuard();
     };
 
     img.onerror = function () {
@@ -452,6 +423,8 @@
   }
 
   function finishCar(car) {
+    const idx = activeRacers.indexOf(car);
+    if (idx >= 0) activeRacers.splice(idx, 1);
     // 跑完一圈：淡出並銷毀
     if (car._tl) { car._tl.kill(); car._tl = null; }
     const img = car.img;
@@ -526,9 +499,6 @@
   /* ═══════════ 初始化 ═══════════ */
   function init() {
     applyTrack();
-    buildClouds();
-    buildCity();
-    buildStands();
     buildBoard();
     syncCarLayer();
 

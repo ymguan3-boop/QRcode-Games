@@ -5,10 +5,9 @@
   const CANVAS_H = 1189;
 
   const CAR_TYPES = {
-    sedan:   { label: '房車', src: 'assets/car-mask.png' },
-    sports:  { label: '跑車', src: 'assets/mask-sports.svg' },
-    offroad: { label: '越野', src: 'assets/mask-offroad.svg' },
-    muscle:  { label: '肌肉', src: 'assets/mask-muscle.svg' }
+    sports:  { label: '跑車', src: 'assets/mask-sports.png' },
+    offroad: { label: '越野', src: 'assets/mask-offroad.png' },
+    muscle:  { label: '肌肉', src: 'assets/mask-muscle.png' }
   };
 
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
@@ -470,7 +469,7 @@
     buildPalette();
     buildCarSelect();
     bindEvents();
-    loadMask('sedan');
+    loadMask('sports');
     fitCanvas();
     window.addEventListener('resize', fitCanvas);
     window.addEventListener('orientationchange', function () {

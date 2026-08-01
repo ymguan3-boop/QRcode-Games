@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>8字型賽道 - 賽車著色競賽</title>
+  <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=3">
+  <link rel="stylesheet" href="css/main-screen.css?v=4">
 </head>
 <body>
   <div class="app">
 
-    <!-- ═══════════ 大螢幕 8 字型賽道場景（白天） ═══════════ -->
+    <!-- ═══════════ 大螢幕賽道場景（以 賽道.png 為背景） ═══════════ -->
     <div class="stage">
       <svg id="sceneSvg" viewBox="0 0 1300 800" preserveAspectRatio="xMidYMid meet">
         <defs>
@@ -23,10 +23,6 @@
           <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#58b65c"/>
             <stop offset="100%" stop-color="#3e9849"/>
-          </linearGradient>
-          <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#5f6a76"/>
-            <stop offset="100%" stop-color="#46505c"/>
           </linearGradient>
           <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="6" result="blur"/>
@@ -54,55 +50,17 @@
           </pattern>
         </defs>
 
-        <!-- 天空 -->
+        <!-- 背景天空 -->
         <rect id="skyRect" x="0" y="0" width="1300" height="800" fill="url(#skyGrad)"/>
 
-        <!-- 太陽與光芒 -->
-        <circle cx="1120" cy="110" r="44" fill="#ffd76e" opacity="0.95"/>
-        <circle cx="1120" cy="110" r="64" fill="#ffe9a8" opacity="0.45"/>
-
-        <!-- 白雲 -->
-        <g id="cloudLayer"></g>
-
-        <!-- 遠方城市剪影 -->
-        <g id="cityLayer" opacity="0.8"></g>
-
-        <!-- 遠山 -->
-        <path d="M0 560 Q 180 490 360 545 T 700 540 T 1050 545 T 1300 540 L1300 620 L0 620 Z" fill="#9cc79a" opacity="0.9"/>
-        <path d="M0 600 Q 260 545 520 590 T 1000 585 T 1300 590 L1300 660 L0 660 Z" fill="#83b98a" opacity="0.9"/>
-
-        <!-- 草地 -->
-        <ellipse cx="650" cy="430" rx="640" ry="380" fill="url(#grassGrad)"/>
-        <ellipse cx="650" cy="430" rx="600" ry="345" fill="none" stroke="#2e7d3c" stroke-width="2" stroke-dasharray="4 10" opacity="0.4"/>
-
-        <!-- 賽道影子 -->
-        <path id="trackShadow" fill="none" stroke="#1c2a1f" stroke-width="128" stroke-linecap="round" stroke-linejoin="round" opacity="0.22" transform="translate(0,12)"/>
-
-        <!-- 賽道路面 -->
-        <path id="trackRoad" fill="none" stroke="url(#roadGrad)" stroke-width="120" stroke-linecap="round" stroke-linejoin="round"/>
-
-        <!-- 賽道外緣白線 -->
-        <path id="trackEdgeOut" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
-        <!-- 賽道內緣白線 -->
-        <path id="trackEdgeIn" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>
-
-        <!-- 賽道中央黃虛線 -->
-        <path id="trackCenter" fill="none" stroke="#ffd34d" stroke-width="3" stroke-dasharray="18 26" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
-
-        <!-- 中央天橋陰影（交叉處） -->
-        <path id="bridgeMark" fill="none" stroke="#22303a" stroke-width="140" stroke-linecap="round" opacity="0.18" transform="translate(4,8)"/>
+        <!-- 賽道底圖（1591×988 全場景，對齊 TRACK_PATH 座標） -->
+        <image id="trackImage" href="賽道.png" x="5.85" y="0" width="1288.3" height="800" preserveAspectRatio="none"/>
 
         <!-- START / 起跑格位 / 發車燈 / 終點棋盤線 -->
         <g id="startGroup"></g>
 
-        <!-- 觀眾席 -->
-        <g id="standLayer"></g>
-
         <!-- 看板 -->
         <g id="boardLayer"></g>
-
-        <!-- 隱形 MotionPath -->
-        <path id="racePath" fill="none" stroke="none" d=""/>
       </svg>
 
       <!-- 賽車圖層 -->
@@ -113,8 +71,8 @@
         <div class="hud-title">
           <span class="hud-logo">&#127937;</span>
           <div>
-            <h1>8字型賽道</h1>
-            <p>FIGURE-8 RACING</p>
+            <h1>Flower 1 世界賽</h1>
+            <p>FLOWER 1 WORLD CUP</p>
           </div>
         </div>
         <div id="statusBadge" class="status-badge offline">
@@ -144,6 +102,7 @@
   <script src="vendor/MotionPathPlugin.min.js?v=2"></script>
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
-  <script src="js/main-screen.js?v=3"></script>
+  <script src="js/track-path.js?v=3"></script>
+  <script src="js/main-screen.js?v=4"></script>
 </body>
 </html>
