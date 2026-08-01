@@ -1,10 +1,10 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v9
+   Car-Race-8 · main-screen.js v10
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 賽車以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
-   - 起跑線位於跑道最上方頂點（垂直於切線）
-   - 無飄移：7 條固定車道（法向量偏移）
+    - 起跑線位於跑道上方正中間（距 640,84 最近處）
+    - 無飄移：3 種行駛路線（寬/中/窄），共 17 條車道
    ============================================================ */
 (function () {
   'use strict';
@@ -26,8 +26,12 @@
     muscle:  { w: 68, h: 108, mask: 'mask-muscle.png'  },
   };
 
-  /* ── 車道偏移（法向量方向，共 7 條，收窄避免超出路面） ── */
-  const LANE_OFFSETS = [-24, -16, -8, 0, 8, 16, 24];
+  /* ── 3 種行駛路線（法向量偏移），每條隨機選一道 ── */
+  const ROUTES = [
+    [-28, -18, -8, 0, 8, 18, 28],   // 寬：左右對稱大偏移
+    [-20, -10, 0, 10, 20],          // 中：中等偏移
+    [-12, -5, 0, 5, 12],            // 窄：靠中央小偏移
+  ];
 
   /* ── 房間代號 ── */
   const ROOM = new URLSearchParams(location.search).get('room') || Math.random().toString(36).slice(2, 7);
@@ -81,12 +85,15 @@
     return { nx: -dy / len, ny: dx / len };
   }
 
-  /* ── 決定起跑進度（跑道最上方頂點處） ── */
+  /* ── 決定起跑進度（跑道上方正中間） ── */
   let START_IDX = 0;
   (function findStartIdx() {
-    let minY = Infinity;
+    const CX = 640, CY = 84;
+    let bestDist = Infinity;
     for (let i = 0; i < trackLen(); i++) {
-      if (path[i * 2 + 1] < minY) { minY = path[i * 2 + 1]; START_IDX = i; }
+      const dx = path[i * 2] - CX, dy = path[i * 2 + 1] - CY;
+      const dist = dx * dx + dy * dy;
+      if (dist < bestDist) { bestDist = dist; START_IDX = i; }
     }
   })();
   const START_PROG = START_IDX / trackLen();
@@ -125,13 +132,6 @@
       'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.45,
     }));
 
-    // 中央虛線
-    el.roadLayer.appendChild(elSvg('path', {
-      d: centerPathD(), fill: 'none',
-      stroke: '#e8e8ea', 'stroke-width': 3,
-      'stroke-dasharray': '14 18',
-      'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-    }));
   }
 
   /* ═══════════ 起跑棋盤線（垂直於跑道切線） ═══════════ */
@@ -177,13 +177,15 @@
   function spawnCar(imgData, carType) {
     if (carState.size >= RACE.maxCars) { retireOldest(); }
 
-    const laneIdx = Math.floor(Math.random() * LANE_OFFSETS.length);
+    const routeIdx = Math.floor(Math.random() * ROUTES.length);
+    const laneIdx  = Math.floor(Math.random() * ROUTES[routeIdx].length);
     const carEl = createCarEl(carType, imgData);
     const idx = nextCarId++;
 
     const stagger = (carState.size % 7) * RACE.startStagger;
     const s = {
       el: carEl,
+      routeIdx: routeIdx,
       laneIdx: laneIdx,
       progress: RACE.startProgress + stagger,
       done: false,
@@ -226,8 +228,9 @@
   function applyTrack(s) {
     const pt = trackPt(s.progress);
     const n  = trackNormal(s.progress);
-    const x  = pt.x + n.nx * LANE_OFFSETS[s.laneIdx];
-    const y  = pt.y + n.ny * LANE_OFFSETS[s.laneIdx];
+    const offset = ROUTES[s.routeIdx][s.laneIdx];
+    const x  = pt.x + n.nx * offset;
+    const y  = pt.y + n.ny * offset;
     const nxt = trackPt(s.progress + 0.002);
     const dx = nxt.x - pt.x, dy = nxt.y - pt.y;
     const ang = Math.atan2(dy, dx) * 180 / Math.PI;
