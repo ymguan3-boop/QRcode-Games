@@ -40,33 +40,37 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
   pointer-events: none;
 }
 
-/* ═══════ HUD（左） ═══════ */
-.hud {
-  position: absolute; top: 20px; left: 20px;
+/* ═══════ 左側工具列（賽況 + QR） ═══════ */
+.toolbar {
+  position: absolute; top: 50%; left: 20px;
+  transform: translateY(-50%);
   z-index: 20;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px 18px;
+  border-radius: 18px;
+  padding: 18px 16px;
   backdrop-filter: blur(8px);
-  min-width: 210px;
+  width: 230px;
   box-shadow: 0 6px 24px rgba(18,50,95,.18);
+  display: flex; flex-direction: column; gap: 10px;
 }
-.hud-title { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.toolbar-title { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
 .hud-logo { font-size: 34px; filter: drop-shadow(0 0 8px rgba(245,184,0,.55)); }
-.hud-title h1 {
+.toolbar-title h1 {
   font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
-  font-size: 22px; font-weight: 900; letter-spacing: 2px;
+  font-size: 21px; font-weight: 900; letter-spacing: 2px;
+  line-height: 1.15;
   background: linear-gradient(90deg, #0a6bd6, #e8366f);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.hud-title p { font-size: 10px; letter-spacing: 3px; color: var(--muted); font-family: 'Orbitron'; }
+.toolbar-title p { font-size: 10px; letter-spacing: 3px; color: var(--muted); font-family: 'Orbitron'; }
 
 .status-badge {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 800; margin-bottom: 12px;
+  font-size: 12px; font-weight: 800;
+  align-self: flex-start;
 }
 .status-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: #8aa0bf; }
 .status-badge.online { background: rgba(22,163,74,.14); color: var(--green); }
@@ -78,26 +82,23 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 
 .hud-stat {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 2px; font-size: 13px; color: var(--muted);
+  padding: 4px 2px; font-size: 13px; color: var(--muted);
 }
 .hud-stat b {
   font-family: 'Orbitron'; font-size: 22px; color: var(--text);
 }
-.hud-stat:nth-child(5) b { color: var(--cyan); }
-.hud-stat:nth-child(6) b { color: var(--pink); }
+.hud-stat:nth-child(4) b { color: var(--cyan); }
+.hud-stat:nth-child(5) b { color: var(--pink); }
 
-/* ═══════ QR 面板（右下） ═══════ */
-.qr-panel {
-  position: absolute; right: 20px; bottom: 20px;
-  z-index: 20;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px;
+.toolbar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0 2px;
+}
+
+/* QR 掃碼區塊 */
+.qr-block {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  backdrop-filter: blur(8px);
-  width: 200px;
-  box-shadow: 0 6px 24px rgba(18,50,95,.18);
 }
 .qr-label { font-size: 12px; font-weight: 800; color: var(--cyan); }
 .qr-frame {
@@ -120,8 +121,7 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 }
 
 @media (max-width: 1100px) {
-  .hud { min-width: 170px; padding: 12px; }
-  .hud-title h1 { font-size: 18px; }
-  .qr-panel { right: 12px; bottom: 12px; width: 170px; }
+  .toolbar { left: 10px; width: 190px; padding: 14px 12px; }
+  .toolbar-title h1 { font-size: 17px; }
   .qr-frame { width: 126px; height: 126px; }
 }

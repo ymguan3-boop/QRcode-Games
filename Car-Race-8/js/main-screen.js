@@ -43,7 +43,6 @@
   /* ── DOM ── */
   const el = {
     svg:           document.getElementById('sceneSvg'),
-    boardLayer:    document.getElementById('boardLayer'),
     startGroup:    document.getElementById('startGroup'),
     carLayer:      document.getElementById('carLayer'),
     statusBadge:   document.getElementById('statusBadge'),
@@ -164,49 +163,62 @@
 
     const laneIdx = Math.floor(Math.random() * LANES.length);
     const spec = CAR[carType];
-    const pts = LANES[laneIdx];
 
     const carEl = createCarEl(carType, imgData);
-    carEl.style.opacity = '0';
-    GSAP.set(carEl, { opacity: 0 });
+    const idx = nextCarId++;
 
-    let idx = nextCarId++;
-    carState.set(idx, { el: carEl, laneIdx: laneIdx, progress: RACE.startProgress, done: false, carType: carType });
+    // 先停在起跑線，再出發
+    const stagger = (carState.size % 7) * RACE.startStagger;
+    const s = {
+      el: carEl,
+      laneIdx: laneIdx,
+      progress: RACE.startProgress + stagger,
+      done: false,
+      carType: carType,
+    };
+    carState.set(idx, s);
 
-    // 從起跑線開始，帶錯開
-    const stagger = carState.size * RACE.startStagger;
-
-    carEl.style.opacity = '0';
-    GSAP.set(carEl, { opacity: 0 });
+    // 立即定位於起跑線（尚未移動）
+    applyTrack(s);
 
     const dur = RACE.lapDur.min + Math.random() * (RACE.lapDur.max - RACE.lapDur.min);
+    const HOLD = 1.4; // 起跑線停留秒數
 
-    const tl = GSAP.timeline({
-      onComplete: function () { finishCar(idx); },
-    });
+    // 彈出式出現（放大＋淡入），讓玩家清楚看見自己的車
+    GSAP.fromTo(carEl,
+      { opacity: 0, scale: 0.5 },
+      {
+        opacity: 1,
+        scale: 1,
+        duration: 0.5,
+        ease: 'back.out(2)',
+        transformOrigin: 'center center',
+      }
+    );
 
-    // 淡入
-    tl.to(carEl, { opacity: 1, duration: 0.3 }, 0);
+    const tl = GSAP.timeline({ onComplete: function () { finishCar(idx); } });
+
+    // 在起跑線停 HOLD 秒
+    tl.to({}, { duration: HOLD }, 0);
 
     // 沿路徑移動（起跑線出發，跑完 1 圈回到起跑線）
-    tl.to({ p: RACE.startProgress + stagger }, {
+    tl.to({ p: s.progress }, {
       p: RACE.startProgress + RACE.laps,
       duration: dur,
       ease: 'none',
       onUpdate: function () {
-        const s = carState.get(idx);
-        if (!s || s.done) return;
-        s.progress = this.targets()[0].p;
-        applyTrack(s);
+        const st = carState.get(idx);
+        if (!st || st.done) return;
+        st.progress = this.targets()[0].p;
+        applyTrack(st);
       },
-    }, 0);
+    }, HOLD);
 
-    // 超車淡出
+    // 完賽淡出
     tl.to(carEl, {
       opacity: 0,
       duration: 0.4,
-      delay: dur * RACE.fadeAfterFinish,
-    }, 0);
+    }, HOLD + dur + 0.2);
   }
 
   function applyTrack(s) {
@@ -266,39 +278,11 @@
     rect.setAttribute('fill', 'url(#checker)');
     rect.setAttribute('stroke', '#000');
     rect.setAttribute('stroke-width', '1.5');
-    rect.setAttribute('transform', `translate(${(rx + lx) / 2},${(ry + ly) / 2}) rotate(${ang})`);
+    rect.setAttribute('transform', `translate(${(rx + lx) / 2},${(ry + ly) / 2}) rotate(${ang + 5})`);
     g.appendChild(rect);
 
     el.startGroup.innerHTML = '';
     el.startGroup.appendChild(g);
-  }
-
-  /* ── 看板 ── */
-  function buildBoard() {
-    const boardW = 260, boardH = 110, bx = 30, by = 50;
-    const boardG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', bx); rect.setAttribute('y', by);
-    rect.setAttribute('width', boardW); rect.setAttribute('height', boardH);
-    rect.setAttribute('rx', '12');
-    rect.setAttribute('fill', 'rgba(255,255,255,0.92)');
-    rect.setAttribute('stroke', '#1a1a2e'); rect.setAttribute('stroke-width', '3');
-    boardG.appendChild(rect);
-
-    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t1.setAttribute('x', bx + boardW / 2); t1.setAttribute('y', by + 40);
-    t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('class', 'board-title');
-    t1.textContent = 'Flower 1 世界賽';
-    boardG.appendChild(t1);
-
-    const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t2.setAttribute('x', bx + boardW / 2); t2.setAttribute('y', by + 68);
-    t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'board-sub');
-    t2.textContent = 'FLOWER 1 WORLD CUP';
-    boardG.appendChild(t2);
-
-    el.boardLayer.appendChild(boardG);
   }
 
   /* ── QR ── */
@@ -353,7 +337,6 @@
 
   /* ── init ── */
   buildFinishLine();
-  buildBoard();
   showQR();
   setupAbly();
   if (new URLSearchParams(location.search).has('demo')) runDemo();

@@ -6,7 +6,7 @@
   <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=5">
+  <link rel="stylesheet" href="css/main-screen.css?v=6">
 </head>
 <body>
   <div class="app">
@@ -57,28 +57,27 @@
         <!-- 賽道底圖（1591×988 全場景，對齊 TRACK_PATH 座標） -->
         <image id="trackImage" href="賽道.png" x="5.85" y="0" width="1288.3" height="800" preserveAspectRatio="none"/>
 
-        <!-- 終點棋盤線（右側） -->
+        <!-- 起跑棋盤線（右側） -->
         <g id="startGroup"></g>
-
-        <!-- 看板 -->
-        <g id="boardLayer"></g>
       </svg>
 
       <!-- 賽車圖層 -->
       <div id="carLayer" class="car-layer"></div>
 
-      <!-- 比賽資訊 HUD -->
-      <div class="hud hud-left">
-        <div class="hud-title">
+      <!-- ═══════════ 左側工具列（賽況 + QR 掃碼） ═══════════ -->
+      <aside class="toolbar">
+        <div class="toolbar-title">
           <span class="hud-logo">&#127937;</span>
           <div>
             <h1>Flower 1 世界賽</h1>
             <p>FLOWER 1 WORLD CUP</p>
           </div>
         </div>
+
         <div id="statusBadge" class="status-badge offline">
           <span class="dot"></span><span class="label"> 初始化中...</span>
         </div>
+
         <div class="hud-stat">
           <span>賽道上車輛</span>
           <b id="activeCars">0</b>
@@ -87,14 +86,15 @@
           <span>玩家連線</span>
           <b id="playerCount">0</b>
         </div>
-      </div>
 
-      <!-- QR Code 面板 -->
-      <div class="qr-panel">
-        <div class="qr-label">手機掃碼，著色你的賽車</div>
-        <div id="qrContainer" class="qr-frame"></div>
-        <div class="qr-hint">著色完成送出，賽車立刻駛入賽道競速</div>
-      </div>
+        <div class="toolbar-divider"></div>
+
+        <div class="qr-block">
+          <div class="qr-label">手機掃碼，著色你的賽車</div>
+          <div id="qrContainer" class="qr-frame"></div>
+          <div class="qr-hint">著色完成送出，賽車立刻在起跑線就位出發</div>
+        </div>
+      </aside>
     </div>
 
   </div>
@@ -104,6 +104,6 @@
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
   <script src="js/track-path.js?v=3"></script>
-  <script src="js/main-screen.js?v=5"></script>
+  <script src="js/main-screen.js?v=6"></script>
 </body>
 </html>
