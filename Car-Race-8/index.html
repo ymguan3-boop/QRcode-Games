@@ -6,7 +6,7 @@
   <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=4">
+  <link rel="stylesheet" href="css/main-screen.css?v=5">
 </head>
 <body>
   <div class="app">
@@ -20,24 +20,25 @@
             <stop offset="60%" stop-color="#8fd0f5"/>
             <stop offset="100%" stop-color="#ccebff"/>
           </linearGradient>
-          <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#58b65c"/>
-            <stop offset="100%" stop-color="#3e9849"/>
-          </linearGradient>
-          <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="6" result="blur"/>
+          <!-- 賽車深色輪廓：加粗 dilate + stroked layer + 黑色底 + 極深外框 -->
+          <filter id="carOutline" x="-50%" y="-50%" width="200%" height="200%">
+            <!-- 外框：dilate 6 -->
+            <feMorphology operator="dilate" radius="6" in="SourceAlpha" result="outerDilate"/>
+            <feFlood flood-color="#000000" flood-opacity="1"/>
+            <feComposite operator="in" in2="outerDilate" result="outerBlack"/>
+            <!-- 中框：dilate 3 + stroked -->
+            <feMorphology operator="dilate" radius="3" in="SourceAlpha" result="midDilate"/>
+            <feFlood flood-color="#000000" flood-opacity="1"/>
+            <feComposite operator="in" in2="midDilate" result="midBlack"/>
+            <!-- 內部加深：dilate 1 -->
+            <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="innerDilate"/>
+            <feFlood flood-color="#000000" flood-opacity="1"/>
+            <feComposite operator="in" in2="innerDilate" result="innerBlack"/>
+            <!-- 合併：外框 → 中框 → 內部加深 → 原圖 -->
             <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          <!-- 賽車深色輪廓：dilate 擴張 + 深色底 -->
-          <filter id="carOutline" x="-40%" y="-40%" width="180%" height="180%">
-            <feMorphology operator="dilate" radius="3" in="SourceAlpha" result="dilated"/>
-            <feFlood flood-color="#081120" flood-opacity="1"/>
-            <feComposite operator="in" in2="dilated" result="dark"/>
-            <feMerge>
-              <feMergeNode in="dark"/>
+              <feMergeNode in="outerBlack"/>
+              <feMergeNode in="midBlack"/>
+              <feMergeNode in="innerBlack"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
@@ -56,7 +57,7 @@
         <!-- 賽道底圖（1591×988 全場景，對齊 TRACK_PATH 座標） -->
         <image id="trackImage" href="賽道.png" x="5.85" y="0" width="1288.3" height="800" preserveAspectRatio="none"/>
 
-        <!-- START / 起跑格位 / 發車燈 / 終點棋盤線 -->
+        <!-- 終點棋盤線（右側） -->
         <g id="startGroup"></g>
 
         <!-- 看板 -->
@@ -103,6 +104,6 @@
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
   <script src="js/track-path.js?v=3"></script>
-  <script src="js/main-screen.js?v=4"></script>
+  <script src="js/main-screen.js?v=5"></script>
 </body>
 </html>

@@ -110,49 +110,14 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 .qr-hint { font-size: 10px; color: var(--muted); text-align: center; line-height: 1.5; }
 
 /* ═══════ 賽車元素 ═══════ */
-.car-unit {
+.car-wrap {
   position: absolute; top: 0; left: 0;
-  width: 0; height: 0;
-}
-.car-img {
-  position: absolute;
-  /* 車型為頂視圖（鼻子朝上），旋轉 90 度使鼻子對準行進方向 */
-  transform: translate(-50%, -50%) rotate(90deg);
-  /* 加大車身：配合加寬後的賽道（單線約 60px，車寬取 48） */
-  width: 48px;
-  height: auto;
-  /* 深色輪廓（SVG dilate）+ 陰影 */
-  filter: url(#carOutline) drop-shadow(0 6px 10px rgba(20,50,90,.45));
-}
-.car-name {
-  position: absolute;
-  top: -28px; left: 0;
-  white-space: nowrap;
-  background: rgba(255,255,255,.92);
-  border: 1px solid var(--border);
-  padding: 2px 8px; border-radius: 999px;
-  font-size: 11px; font-weight: 800; color: var(--text);
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(18,50,95,.15);
 }
-
-/* 舞台元素 */
-.stand {
-  position: absolute;
-  display: flex; flex-direction: column;
-  border: 2px solid #c9d6e8; border-radius: 6px;
-  overflow: hidden;
-  background: #f0f6ff;
+.car-wrap > div {
+  position: relative;
+  overflow: visible;
 }
-.stand-roof { height: 8px; background: #7ea6d8; }
-.stand-seats {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(3, 6px);
-  gap: 3px;
-  padding: 4px;
-}
-.stand-seat { width: 6px; height: 6px; border-radius: 2px; background: #5b7db3; }
 
 @media (max-width: 1100px) {
   .hud { min-width: 170px; padding: 12px; }

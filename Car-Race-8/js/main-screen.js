@@ -1,516 +1,354 @@
+/* ============================================================
+   Car-Race-8 · main-screen.js v5
+   ──────────────────────────────────────────────────────────
+   - 賽道圖背景（賽道.png），右側起跑棋盤線
+   - 無飄移：7 條固定車道（法向量偏移 ±30/±15/0）
+   - 車輛嚴格行走在道路上
+   ============================================================ */
 (function () {
   'use strict';
 
-  const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
-  const channelName = function (room) { return 'carrace-' + room; };
+  /* ── 全域 ── */
+  const GSAP   = window.gsap;
+  const PLUGIN = window.MotionPathPlugin;
+  if (GSAP && PLUGIN) GSAP.registerPlugin(PLUGIN);
 
-  /* ═══════════ 賽道參數 ═══════════ */
-  const TRACK = {
-    roadWidth: 120
+  /* ── 賽道 ── */
+  const TRACK = { roadWidth: 120, centerOffset: 0 };
+
+  /* ── 賽車規格（×1.1 放大） ── */
+  const CAR = {
+    sports:  { w: 53, h: 87, mask: 'mask-sports.png'  },
+    offroad: { w: 59, h: 95, mask: 'mask-offroad.png' },
+    muscle:  { w: 57, h: 90, mask: 'mask-muscle.png'  },
   };
-  const VB_W = 1300;
-  const VB_H = 800;
 
-  /* ═══════════ 競賽參數 ═══════════ */
+  /* ── 車道偏移（法向量方向，共 7 條） ── */
+  const LANE_OFFSETS = [-30, -20, -10, 0, 10, 20, 30];
+
+  /* ── 比賽參數 ── */
   const RACE = {
-    laps: 1,                 // 每位車手跑 1 圈
-    lapDurMin: 13,           // 每圈秒數下限
-    lapDurMax: 18,           // 每圈秒數上限
-    maxCars: 12,             // 賽道同時車輛上限
-    fadeAfterFinish: 0.8,    // 完賽後淡出秒數
-    startStagger: 0.035,     // 起跑佇列：每台車沿路徑後退比例
-    driftMax: 8,             // 隨機飄移最大橫向偏移（px，限制於道路半寬內）
-    driftAmpMax: 6,          // 飄移正弦波振幅上限
-    driftWaves: 5,           // 飄移正弦波數量
-    minGap: 44               // 車距下限（px），低於此值後車自動減速
+    laps: 1,
+    lapDur: { min: 13, max: 18 },
+    maxCars: 12,
+    fadeAfterFinish: 0.8,
+    minGap: 40,
+    startStagger: 0.04,
+    startProgress: 0.0,
   };
 
+  /* ── DOM ── */
   const el = {
-    status: document.getElementById('statusBadge'),
-    statusLabel: document.getElementById('statusBadge').querySelector('.label'),
-    qr: document.getElementById('qrContainer'),
-    carLayer: document.getElementById('carLayer'),
-    activeCars: document.getElementById('activeCars'),
-    playerCount: document.getElementById('playerCount')
+    svg:           document.getElementById('sceneSvg'),
+    boardLayer:    document.getElementById('boardLayer'),
+    startGroup:    document.getElementById('startGroup'),
+    carLayer:      document.getElementById('carLayer'),
+    statusBadge:   document.getElementById('statusBadge'),
+    activeCars:    document.getElementById('activeCars'),
+    playerCount:   document.getElementById('playerCount'),
+    qrContainer:   document.getElementById('qrContainer'),
   };
 
-  let ably = null;
-  let channel = null;
-  let roomId = '';
-  let myClientId = 'host-' + Math.random().toString(36).substring(2, 8);
-  let playerCount = 0;
-  let activeCount = 0;
-  let racerSeq = 0;
+  /* ── 賽道座標 ── */
+  const path = (window.TRACK_PATH || []).slice();
+  if (path.length < 4) { console.error('TRACK_PATH missing'); return; }
 
-  gsap.registerPlugin(MotionPathPlugin);
+  function trackLen() { return path.length / 2; }
+  function trackXY(i) { const n = trackLen(); i = ((i % n) + n) % n; return { x: path[i * 2], y: path[i * 2 + 1] }; }
 
-  /* ═══════════ 賽道路徑（取自 js/track-path.js，viewBox 座標） ═══════════ */
-  function getTrackPoints() {
-    const a = window.TRACK_PATH || [];
-    const pts = [];
-    for (let i = 0; i < a.length; i += 2) {
-      pts.push({ x: a[i], y: a[i + 1] });
+  function trackPt(t) {
+    const n = trackLen();
+    const f = ((t % 1) + 1) % 1 * n;
+    const i = Math.floor(f);
+    const r = f - i;
+    const a = trackXY(i), b = trackXY(i + 1);
+    return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
+  }
+
+  /* ── 法向量（垂直於路徑切線） ── */
+  function trackNormal(t) {
+    const n = trackLen();
+    const f = ((t % 1) + 1) % 1 * n;
+    const i = Math.floor(f);
+    const a = trackXY(i), b = trackXY(i + 1);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return { nx: -dy / len, ny: dx / len };
+  }
+
+  /* ── 判斷 t 是否在賽道上（簡易距離檢查） ── */
+  function isOnTrack(x, y, threshold) {
+    const thr = threshold || TRACK.roadWidth * 0.55;
+    for (let i = 0; i < trackLen(); i += 3) {
+      const p = trackXY(i);
+      const dx = x - p.x, dy = y - p.y;
+      if (dx * dx + dy * dy < thr * thr) return true;
     }
-    return pts;
+    return false;
   }
 
-  /* 隨機飄移路徑：以法向量將基準路徑左右平移，疊加隨機車道偏移與正弦波飄移 */
-  function buildDriftPath(laneOffset, driftAmp, driftWaves, phase) {
-    const base = getTrackPoints();
-    const n = base.length;
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const p = base[i];
-      const q = base[(i + 1) % n];
-      let dx = q.x - p.x;
-      let dy = q.y - p.y;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const t = i / n;
-      const wobble = Math.sin(t * Math.PI * 2 * driftWaves + phase) * driftAmp;
-      const off = laneOffset + wobble;
-      out.push({
-        x: p.x + (-dy / len) * off,
-        y: p.y + (dx / len) * off
-      });
-    }
-    return out;
-  }
-
-  /* 起跑佇列：將路徑陣列旋轉，使車從起跑線後方某處開始（前後錯開） */
-  function rotatePath(pts, frac) {
-    const n = pts.length;
-    const k = Math.round(frac * n) % n;
-    return pts.slice(k).concat(pts.slice(0, k));
-  }
-
-  function applyTrack() {
-    const startP = getTrackPoints()[0];
-    buildStartArea(startP);
-    startLightsLoop();
-  }
-
-  /* ═══════════ F1 起跑區（起點格位 P1~P5 + 終點棋盤線 + 發車燈） ═══════════ */
-  function buildStartArea(p) {
-    const g = document.getElementById('startGroup');
-    if (!g) return;
-    const cx = p.x;
-    const cy = p.y;
-    const roadW = TRACK.roadWidth;
-    const half = roadW / 2;
-    let html = '';
-
-    // 終點棋盤線：橫跨賽道、垂直於行進方向（起點處行進方向朝下）
-    html +=
-      '<g transform="translate(' + (cx - half) + ',' + (cy - 8) + ')">' +
-        '<rect width="' + roadW + '" height="16" fill="url(#checker)" stroke="#ffffff" stroke-width="2" opacity="0.95"/>' +
-      '</g>';
-
-    // F1 起跑格位 P1~P5（沿行進方向交錯排位，P1 最前方）
-    const slots = [
-      { y: -34, dx: 0 },
-      { y: -62, dx: -22 },
-      { y: -90, dx: 22 },
-      { y: -118, dx: -22 },
-      { y: -146, dx: 22 }
-    ];
-    slots.forEach(function (s, i) {
-      const n = i + 1;
-      html +=
-        '<g transform="translate(' + (cx + s.dx) + ',' + (cy + s.y) + ')">' +
-          '<rect x="-20" y="-11" width="40" height="22" rx="6" fill="#0e1c33" opacity="0.55" stroke="#ffd34d" stroke-width="1.5"/>' +
-          '<text x="0" y="5" text-anchor="middle" font-size="13" font-weight="900" fill="#ffd34d" font-family="Orbitron">P' + n + '</text>' +
-        '</g>';
-    });
-
-    // 發車燈燈座（五燈式，模擬 F1 起跑燈）
-    html +=
-      '<g transform="translate(' + cx + ',' + (cy - 196) + ')">' +
-        '<rect x="-52" y="-14" width="104" height="28" rx="8" fill="#0a1322" stroke="#33507a" stroke-width="2"/>' +
-        '<circle class="start-light" cx="-36" cy="0" r="7" fill="#5a2530"/>' +
-        '<circle class="start-light" cx="-18" cy="0" r="7" fill="#5a2530"/>' +
-        '<circle class="start-light" cx="0" cy="0" r="7" fill="#5a2530"/>' +
-        '<circle class="start-light" cx="18" cy="0" r="7" fill="#5a2530"/>' +
-        '<circle class="start-light" cx="36" cy="0" r="7" fill="#5a2530"/>' +
-        '<text x="0" y="-22" text-anchor="middle" font-size="11" font-weight="900" fill="#ffffff" font-family="Orbitron" letter-spacing="2">START</text>' +
-      '</g>';
-
-    g.innerHTML = html;
-  }
-
-  function startLightsLoop() {
-    const lights = Array.prototype.slice.call(document.querySelectorAll('.start-light'));
-    if (!lights.length) return;
-    const reset = function () {
-      lights.forEach(function (l) { l.setAttribute('fill', '#5a2530'); });
-    };
-    reset();
-    const tl = gsap.timeline({ repeat: -1, repeatDelay: 4, onRepeat: reset });
-    lights.forEach(function (l, i) {
-      tl.call(function () { l.setAttribute('fill', '#ff2d3a'); }, [], i * 0.4);
-    });
-    tl.call(function () {}, [], lights.length * 0.4 + 1.2);   // 全亮 hold
-    tl.call(reset, [], lights.length * 0.4 + 1.6);            // 熄滅 → 起跑
-  }
-
-  /* ═══════════ 看板 ═══════════ */
-  function buildBoard() {
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const board = document.getElementById('boardLayer');
-    if (!board) return;
-    const rect = document.createElementNS(svgNS, 'rect');
-    rect.setAttribute('x', '470');
-    rect.setAttribute('y', '26');
-    rect.setAttribute('width', '360');
-    rect.setAttribute('height', '54');
-    rect.setAttribute('rx', '10');
-    rect.setAttribute('fill', '#f4f8ff');
-    rect.setAttribute('stroke', '#0a6bd6');
-    rect.setAttribute('stroke-width', '3');
-    board.appendChild(rect);
-    const text = document.createElementNS(svgNS, 'text');
-    text.setAttribute('x', '650');
-    text.setAttribute('y', '62');
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', '30');
-    text.setAttribute('font-weight', '900');
-    text.setAttribute('fill', '#12325f');
-    text.setAttribute('font-family', 'Orbitron, Noto Sans TC');
-    text.textContent = 'Flower 1 世界賽';
-    board.appendChild(text);
-  }
-
-  /* ═══════════ carLayer 與 SVG 視框同步（避免座標錯位） ═══════════ */
-  function syncCarLayer() {
-    const svg = document.getElementById('sceneSvg');
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const scale = Math.min(rect.width / VB_W, rect.height / VB_H);
-    const offX = (rect.width - VB_W * scale) / 2;
-    const offY = (rect.height - VB_H * scale) / 2;
-    el.carLayer.style.transformOrigin = '0 0';
-    el.carLayer.style.transform = 'translate(' + offX + 'px,' + offY + 'px) scale(' + scale + ')';
-  }
-
-  /* ═══════════ QR Code ═══════════ */
-  function generateQR() {
-    const basePath = location.pathname.replace(/\/?[^/]*$/, '/');
-    const mobileUrl = location.origin + basePath + 'mobile.html?room=' + roomId;
-    el.qr.innerHTML = '';
-    try {
-      new QRCode(el.qr, {
-        text: mobileUrl,
-        width: 132,
-        height: 132,
-        colorDark: '#0a1e3a',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    } catch (err) {
-      const link = document.createElement('a');
-      link.href = mobileUrl;
-      link.textContent = '開啟手機版';
-      link.target = '_blank';
-      el.qr.appendChild(link);
-      console.error('[qrcode] generation failed:', err);
-    }
-  }
-
-  /* ═══════════ Ably ═══════════ */
-  function setupAbly() {
-    if (!ABLY_KEY || ABLY_KEY.indexOf('PASTE_') === 0) {
-      setStatus('offline', 'Ably Key 未設定');
-      return;
-    }
-    try {
-      ably = new Ably.Realtime({
-        key: ABLY_KEY,
-        clientId: myClientId,
-        transportParams: { maxMessageSize: 500000 }
-      });
-    } catch (err) {
-      setStatus('offline', '連線模組載入失敗');
-      console.error('[ably] init error:', err);
-      return;
-    }
-
-    ably.connection.on('connected', function () {
-      setStatus('ready', '等待玩家著色');
-      console.log('[ably] connected');
-    });
-    ably.connection.on('failed', function (err) {
-      setStatus('offline', '連線失敗');
-      console.error('[ably] connection failed:', err);
-    });
-    ably.connection.on('closed', function () {
-      setStatus('offline', '連線已中斷');
-    });
-
-    channel = ably.channels.get(channelName(roomId));
-    channel.subscribe('car', function (message) {
-      handleCar(message.data);
-      try {
-        channel.publish('ack', { id: message.id });
-      } catch (_) {}
-    });
-
-    channel.presence.enter('host');
-    channel.presence.subscribe('enter', updatePresence);
-    channel.presence.subscribe('leave', updatePresence);
-    channel.presence.get(updatePresence);
-    // 週期性同步，確保玩家離線即時反映
-    setInterval(updatePresence, 3000);
-  }
-
-  function updatePresence() {
-    if (!channel || !channel.presence) return;
-    channel.presence.get(function (err, members) {
-      if (err) {
-        console.error('[presence] error:', err);
-        return;
+  /* ── 偏移路徑（固定車道） ── */
+  function computeLanePaths() {
+    const lanes = [];
+    LANE_OFFSETS.forEach(function (offset) {
+      const pts = [];
+      for (let t = 0; t < trackLen(); t++) {
+        const pt = trackXY(t);
+        const n  = trackNormal(t);
+        pts.push(pt.x + n.nx * offset);
+        pts.push(pt.y + n.ny * offset);
       }
-      const others = (members || []).filter(function (m) { return m.clientId !== myClientId; });
-      playerCount = others.length;
-      el.playerCount.textContent = playerCount;
-      if (playerCount === 0) {
-        setStatus('ready', '等待玩家著色');
-      } else {
-        setStatus('online', playerCount + ' 位玩家連線中');
-      }
+      lanes.push(pts);
     });
+    return lanes;
   }
+  const LANES = computeLanePaths();
 
-  function setStatus(mode, text) {
-    el.status.className = 'status-badge ' + mode;
-    el.statusLabel.textContent = ' ' + text;
-  }
-
-  /* ═══════════ 賽車競賽 ═══════════ */
-  const CAR_SIZE = { sports: 60, offroad: 70, muscle: 64 };
-
-  const activeRacers = [];
-
-  function handleCar(data) {
-    if (!data || !data.imageData) return;
-    retireOldestIfNeeded();
-    spawnCar(data.imageData, data.id, data.carType);
-  }
-
-  function retireOldestIfNeeded() {
-    const activeEls = el.carLayer.querySelectorAll('.car-unit');
-    if (activeEls.length >= RACE.maxCars) {
-      const oldest = activeEls[0];
-      const idx = activeRacers.findIndex(function (r) { return r.unit === oldest; });
-      if (idx >= 0) activeRacers.splice(idx, 1);
-      if (oldest && oldest._tl) {
-        oldest._tl.kill();
-        oldest._tl = null;
-        const img = oldest.querySelector('.car-img');
-        if (img) { img.src = ''; img.removeAttribute('src'); }
-        oldest.remove();
-        activeCount = Math.max(0, activeCount - 1);
-        updateCounts();
-      }
+  /* ── 決定起跑索引（右側垂直路段，x 最大處） ── */
+  let START_IDX = 0;
+  (function findStartIdx() {
+    let maxX = -Infinity;
+    for (let i = 0; i < trackLen(); i++) {
+      if (path[i * 2] > maxX) { maxX = path[i * 2]; START_IDX = i; }
     }
+  })();
+
+  /* ── 賽車圖層 ── */
+  const carState = new Map();
+  let nextCarId = 0;
+
+  function makeCarSvg(type) {
+    const spec = CAR[type];
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    const img = document.createElementNS(ns, 'image');
+    img.setAttribute('href', 'assets/' + spec.mask);
+    img.setAttribute('x', String(-spec.w / 2));
+    img.setAttribute('y', String(-spec.h / 2));
+    img.setAttribute('width', String(spec.w));
+    img.setAttribute('height', String(spec.h));
+    img.setAttribute('filter', 'url(#carOutline)');
+    g.appendChild(img);
+    return g;
   }
 
-  function spawnCar(imageData, id, carType) {
-    racerSeq++;
-    const racerName = '車 ' + racerSeq;
+  function createCarEl(type) {
+    const wrap = document.createElement('div');
+    wrap.className = 'car-wrap';
 
-    const unit = document.createElement('div');
-    unit.className = 'car-unit';
-    unit.innerHTML =
-      '<img class="car-img" src="" alt="">' +
-      '<div class="car-name">' + racerName + '</div>';
-    el.carLayer.appendChild(unit);
-
-    const img = unit.querySelector('.car-img');
-    const nameEl = unit.querySelector('.car-name');
-
-    // 依車款設定車身寬度（跑車較小、越野較大）
-    const type = (carType && CAR_SIZE[carType]) ? carType : 'sports';
-    img.style.width = CAR_SIZE[type] + 'px';
-
-    const car = {
-      id: id || Date.now().toString(36),
-      unit: unit,
-      img: img,
-      type: type,
-      spawnTime: Date.now()
-    };
-
-    const lapDur = RACE.lapDurMin + Math.random() * (RACE.lapDurMax - RACE.lapDurMin);
-
-    img.onload = function () {
-      activeCount++;
-      updateCounts();
-
-      // 起跑佇列：依車款大小決定前後間距（越寬的車退越後面），沿路徑後退錯開
-      const halfCar = CAR_SIZE[type] / 2;
-      const spacing = halfCar / VB_W;
-      const queueGap = RACE.startStagger + spacing;
-      const startFrac = activeRacers.length * queueGap;
-
-      // 隨機車道偏移 + 隨機飄移（正弦波），幅度控制於道路半寬內
-      const laneOffset = (Math.random() * 2 - 1) * RACE.driftMax;
-      const driftAmp = RACE.driftAmpMax * (0.3 + Math.random() * 0.7);
-      const driftWaves = RACE.driftWaves;
-      const phase = Math.random() * Math.PI * 2;
-      const driftPts = buildDriftPath(laneOffset, driftAmp, driftWaves, phase);
-      const pathPts = rotatePath(driftPts, startFrac);
-      const pathOpts = {
-        path: pathPts,
-        alignOrigin: [0.5, 0.5],
-        autoRotate: true
-      };
-
-      const tl = gsap.timeline({
-        onComplete: function () {
-          finishCar(car);
-        }
-      });
-
-      const counterRotate = function () {
-        const r = gsap.getProperty(unit, 'rotation') || 0;
-        if (nameEl) gsap.set(nameEl, { rotation: -r, xPercent: -50 });
-      };
-
-      // 行進間車距下限：若與其他車太近且自己在後，自動減速讓行（遵守不重疊原則）
-      const spacingGuard = function () {
-        counterRotate();
-        const mx = gsap.getProperty(unit, 'x') || 0;
-        const my = gsap.getProperty(unit, 'y') || 0;
-        const myProg = tl.progress();
-        let target = 1;
-        for (let i = 0; i < activeRacers.length; i++) {
-          const o = activeRacers[i];
-          if (o === car || !o.unit || o.unit.parentNode !== unit.parentNode) continue;
-          const ox = gsap.getProperty(o.unit, 'x');
-          const oy = gsap.getProperty(o.unit, 'y');
-          if (ox === undefined || oy === undefined) continue;
-          const d = Math.hypot(mx - ox, my - oy);
-          if (d < RACE.minGap) {
-            const theirProg = (o._tl && o._tl.progress) ? o._tl.progress() : 0;
-            if (myProg < theirProg) target = Math.min(target, 0.35);
-          }
-        }
-        const cur = tl.timeScale();
-        const next = cur + (target - cur) * 0.2;
-        if (Math.abs(next - cur) > 0.005) tl.timeScale(next);
-      };
-
-      for (let i = 0; i < RACE.laps; i++) {
-        tl.to(unit, {
-          duration: lapDur,
-          ease: 'none',
-          motionPath: pathOpts,
-          onUpdate: spacingGuard
-        }, i === 0 ? 0 : '-=0.01');
-      }
-
-      unit._tl = tl;
-      activeRacers.push(car);
-      spacingGuard();
-    };
-
-    img.onerror = function () {
-      unit.remove();
-      racerSeq--;
-      console.error('[car] image load failed');
-    };
-
-    img.src = imageData;
+    const svgWrap = document.createElement('div');
+    svgWrap.style.cssText = 'position:absolute;overflow:visible;pointer-events:none;';
+    svgWrap.appendChild(makeCarSvg(type));
+    wrap.appendChild(svgWrap);
+    el.carLayer.appendChild(wrap);
+    return wrap;
   }
 
-  function finishCar(car) {
-    const idx = activeRacers.indexOf(car);
-    if (idx >= 0) activeRacers.splice(idx, 1);
-    // 跑完一圈：淡出並銷毀
-    if (car._tl) { car._tl.kill(); car._tl = null; }
-    const img = car.img;
-    gsap.to(car.unit, {
+  /* ── 距離檢查 ── */
+  function isLaneOccupied(laneIdx, progress) {
+    for (const s of carState.values()) {
+      if (s.laneIdx !== laneIdx) continue;
+      if (Math.abs(s.progress - progress) < RACE.minGap / trackLen()) return true;
+    }
+    return false;
+  }
+
+  /* ── 發車 ── */
+  function spawnCar(imgData, carType) {
+    if (carState.size >= RACE.maxCars) { retireOldest(); }
+
+    const laneIdx = Math.floor(Math.random() * LANES.length);
+    const spec = CAR[carType];
+    const pts = LANES[laneIdx];
+
+    const carEl = createCarEl(carType);
+    carEl.style.opacity = '0';
+    GSAP.set(carEl, { opacity: 0 });
+
+    let idx = nextCarId++;
+    carState.set(idx, { el: carEl, laneIdx: laneIdx, progress: RACE.startProgress, done: false, carType: carType });
+
+    // 從起跑線開始，帶錯開
+    const stagger = carState.size * RACE.startStagger;
+
+    carEl.style.opacity = '0';
+    GSAP.set(carEl, { opacity: 0 });
+
+    const dur = RACE.lapDur.min + Math.random() * (RACE.lapDur.max - RACE.lapDur.min);
+
+    const tl = GSAP.timeline({
+      onComplete: function () { finishCar(idx); },
+    });
+
+    // 淡入
+    tl.to(carEl, { opacity: 1, duration: 0.3 }, 0);
+
+    // 沿路徑移動
+    tl.to({ p: RACE.startProgress + stagger }, {
+      p: 1,
+      duration: dur,
+      ease: 'none',
+      onUpdate: function () {
+        const s = carState.get(idx);
+        if (!s || s.done) return;
+        s.progress = this.targets()[0].p;
+        applyTrack(s);
+      },
+    }, 0);
+
+    // 超車淡出
+    tl.to(carEl, {
       opacity: 0,
-      scale: 1.15,
-      duration: RACE.fadeAfterFinish,
-      ease: 'power2.in',
-      onComplete: function () {
-        if (img) { img.src = ''; img.removeAttribute('src'); }
-        if (car.unit.parentNode) car.unit.remove();
-        activeCount = Math.max(0, activeCount - 1);
-        updateCounts();
-      }
-    });
+      duration: 0.4,
+      delay: dur * RACE.fadeAfterFinish,
+    }, 0);
   }
 
-  function updateCounts() {
-    el.activeCars.textContent = activeCount;
-  }
-
-  /* ═══════════ 測試用：自動發車 ═══════════ */
-  function startDemoMode() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('demo') !== '1') return;
-    const demoTypes = Object.keys(CAR_SIZE);
-    const demoCar = (function () {
-      const c = document.createElement('canvas');
-      c.width = 200; c.height = 384;
-      const ctx = c.getContext('2d');
-      return function (type) {
-        const hue = Math.floor(Math.random() * 360);
-        ctx.clearRect(0, 0, 200, 384);
-        ctx.save();
-        ctx.translate(100, 192);
-        // 頂視車（車頭朝上），與 car-mask 同方向
-        ctx.fillStyle = 'hsl(' + hue + ',80%,55%)';
-        ctx.beginPath();
-        ctx.moveTo(0, -34);
-        ctx.lineTo(24, -26);
-        ctx.lineTo(30, -6);
-        ctx.lineTo(38, 6);
-        ctx.lineTo(30, 22);
-        ctx.lineTo(14, 32);
-        ctx.lineTo(-14, 32);
-        ctx.lineTo(-30, 22);
-        ctx.lineTo(-38, 6);
-        ctx.lineTo(-30, -6);
-        ctx.lineTo(-24, -26);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#101820';
-        ctx.fillRect(-12, -14, 24, 30);   // 車窗
-        ctx.fillRect(-16, -36, 32, 8);    // 前擋
-        ctx.fillRect(-16, 30, 32, 6);     // 尾翼
-        ctx.fillRect(-38, -2, 6, 12);     // 後照鏡
-        ctx.fillRect(32, -2, 6, 12);
-        ctx.restore();
-        return c.toDataURL('image/png');
-      };
-    })();
-
-    const spawnDemo = function () {
-      const type = demoTypes[Math.floor(Math.random() * demoTypes.length)];
-      spawnCar(demoCar(type), undefined, type);
-    };
-
-    setTimeout(spawnDemo, 800);
-    setInterval(spawnDemo, 4200);
-  }
-
-  /* ═══════════ 初始化 ═══════════ */
-  function init() {
-    applyTrack();
-    buildBoard();
+  function applyTrack(s) {
+    const pt  = trackPt(s.progress);
+    const n   = trackNormal(s.progress);
+    const x   = pt.x + n.nx * LANE_OFFSETS[s.laneIdx];
+    const y   = pt.y + n.ny * LANE_OFFSETS[s.laneIdx];
+    const nxt = trackPt(s.progress + 0.002);
+    const dx  = nxt.x - pt.x;
+    const dy  = nxt.y - pt.y;
+    const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    const spec = CAR[s.carType] || CAR.sports;
+    s.el.style.transform = `translate(${x - spec.w / 2}px,${y - spec.h / 2}px) rotate(${ang + 90}deg)`;
     syncCarLayer();
-
-    roomId = 'race-' + Math.random().toString(36).substring(2, 8).toLowerCase();
-    window.__roomId = roomId;
-    generateQR();
-
-    setupAbly();
-    startDemoMode();
-
-    window.addEventListener('resize', syncCarLayer);
   }
 
-  init();
+  function finishCar(idx) {
+    const s = carState.get(idx);
+    if (!s) return;
+    s.done = true;
+    s.el.remove();
+    carState.delete(idx);
+  }
+
+  function retireOldest() {
+    let oldest = null;
+    for (const [k, v] of carState) {
+      if (v.done) { v.el.remove(); carState.delete(k); continue; }
+      if (!oldest || v.progress > oldest.progress) oldest = v;
+    }
+  }
+
+  function syncCarLayer() { el.activeCars.textContent = carState.size; }
+
+  /* ── 起跑棋盤線（右側） ── */
+  function buildFinishLine() {
+    const t = START_IDX / trackLen();
+    const pt = trackPt(t);
+    const n  = trackNormal(t);
+    const halfW = TRACK.roadWidth / 2 + 5;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    // 橫跨道路的棋盤紋矩形
+    const rx = pt.x + n.nx * halfW;
+    const ry = pt.y + n.ny * halfW;
+    const lx = pt.x - n.nx * halfW;
+    const ly = pt.y - n.ny * halfW;
+    const ang = Math.atan2(ry - ly, rx - lx) * 180 / Math.PI;
+    const len = Math.sqrt((rx - lx) * (rx - lx) + (ry - ly) * (ry - ly));
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', String(-len / 2));
+    rect.setAttribute('y', '-6');
+    rect.setAttribute('width', String(len));
+    rect.setAttribute('height', '12');
+    rect.setAttribute('fill', 'url(#checker)');
+    rect.setAttribute('stroke', '#000');
+    rect.setAttribute('stroke-width', '1.5');
+    rect.setAttribute('transform', `translate(${(rx + lx) / 2},${(ry + ly) / 2}) rotate(${ang})`);
+    g.appendChild(rect);
+
+    el.startGroup.innerHTML = '';
+    el.startGroup.appendChild(g);
+  }
+
+  /* ── 看板 ── */
+  function buildBoard() {
+    const boardW = 260, boardH = 110, bx = 30, by = 50;
+    const boardG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', bx); rect.setAttribute('y', by);
+    rect.setAttribute('width', boardW); rect.setAttribute('height', boardH);
+    rect.setAttribute('rx', '12');
+    rect.setAttribute('fill', 'rgba(255,255,255,0.92)');
+    rect.setAttribute('stroke', '#1a1a2e'); rect.setAttribute('stroke-width', '3');
+    boardG.appendChild(rect);
+
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t1.setAttribute('x', bx + boardW / 2); t1.setAttribute('y', by + 40);
+    t1.setAttribute('text-anchor', 'middle'); t1.setAttribute('class', 'board-title');
+    t1.textContent = 'Flower 1 世界賽';
+    boardG.appendChild(t1);
+
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t2.setAttribute('x', bx + boardW / 2); t2.setAttribute('y', by + 68);
+    t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('class', 'board-sub');
+    t2.textContent = 'FLOWER 1 WORLD CUP';
+    boardG.appendChild(t2);
+
+    el.boardLayer.appendChild(boardG);
+  }
+
+  /* ── QR ── */
+  function showQR() {
+    el.qrContainer.innerHTML = '';
+    const room = 'carrace-' + Math.random().toString(36).slice(2, 7);
+    const url = location.origin + location.pathname + '?room=' + room;
+    new QRCode(el.qrContainer, { text: url, width: 160, height: 160 });
+  }
+
+  /* ── Ably ── */
+  function setupAbly() {
+    if (typeof Ably === 'undefined') { setBadge('offline', ' Ably 未載入'); return; }
+    try {
+      const ably = new Ably.Realtime({ key: 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc', clientId: 'screen-' + Math.random().toString(36).slice(2, 6) });
+
+      ably.connection.on(function (s) {
+        if (s.current === 'connected') { setBadge('online', ' 線上'); el.playerCount.textContent = '0'; }
+        else if (s.current === 'failed' || s.current === 'suspended') setBadge('offline', ' 斷線');
+      });
+
+      const channel = ably.channels.get('carrace-' + (new URLSearchParams(location.search).get('room') || 'lobby'));
+
+      channel.presence.subscribe(function () { channel.presence.get(function (e, m) { el.playerCount.textContent = String(m.filter(function (x) { return x.clientId && x.clientId.startsWith('mob-'); }).length); }); });
+
+      channel.subscribe(function (msg) {
+        const d = msg.data;
+        if (d && d.type === 'car') spawnCar(d.image, d.carType || 'sports');
+      });
+
+      ably.connection.once(function (s) {
+        if (s.current !== 'connected') { console.warn('Ably not connected'); setBadge('offline', ' 未連線'); }
+      });
+    } catch (e) { console.error('Ably init error', e); setBadge('offline', ' 連線錯誤'); }
+  }
+
+  function setBadge(cls, text) { el.statusBadge.className = 'status-badge ' + cls; el.statusBadge.querySelector('.label').textContent = text; }
+
+  /* ── Demo ── */
+  function runDemo() {
+    const types = ['sports', 'offroad', 'muscle'];
+    function scheduleNext() {
+      const delay = 1800 + Math.random() * 2500;
+      setTimeout(function () {
+        spawnCar(null, types[Math.floor(Math.random() * types.length)]);
+        if (carState.size < RACE.maxCars) scheduleNext();
+      }, delay);
+    }
+    scheduleNext();
+  }
+
+  /* ── init ── */
+  buildFinishLine();
+  buildBoard();
+  showQR();
+  setupAbly();
+  if (new URLSearchParams(location.search).has('demo')) runDemo();
 })();
