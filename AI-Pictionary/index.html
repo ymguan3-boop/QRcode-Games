@@ -6,7 +6,7 @@
   <title>AI 猜猜看 - Pictionary</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=7">
+  <link rel="stylesheet" href="css/main-screen.css?v=8">
 </head>
 <body>
   <div class="app">
@@ -39,8 +39,10 @@
         <div class="input-group">
           <input id="apiKeyInput" type="password" placeholder="貼上你的 Gemini API Key">
           <button id="saveKeyBtn" class="btn-small">儲存</button>
+          <button id="clearKeyBtn" class="btn-small btn-ghost">清除</button>
         </div>
         <p id="apiStatus" class="api-status"></p>
+        <p class="api-hint">想更換 Key 嗎？直接在輸入框貼上新的 Key 再按「儲存」即可。</p>
         <a class="help-link" href="https://aistudio.google.com/apikey" target="_blank">取得 API Key 說明</a>
         <p id="modelName" class="model-name"></p>
       </div>
@@ -75,8 +77,8 @@
     </main>
   </div>
 
-  <script src="vendor/ably.min.js?v=7"></script>
-  <script src="vendor/qrcode.min.js?v=7"></script>
-  <script src="js/main-screen.js?v=7"></script>
+  <script src="vendor/ably.min.js?v=8"></script>
+  <script src="vendor/qrcode.min.js?v=8"></script>
+  <script src="js/main-screen.js?v=8"></script>
 </body>
 </html>

@@ -68,6 +68,12 @@ html, body { height: 100%; font-family: Inter, 'Noto Sans TC', system-ui, sans-s
   cursor: pointer; white-space: nowrap;
 }
 .btn-small:hover { opacity: .85; }
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--accent3); border-color: var(--accent3); }
+.api-hint { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
 .api-status { font-size: 11px; color: var(--muted); margin-top: 4px; }
 .api-status.ok { color: #22c55e; }
 .api-status.err { color: var(--accent3); }

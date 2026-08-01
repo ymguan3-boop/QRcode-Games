@@ -14,6 +14,7 @@
     drawingCount: document.querySelector('#drawingCount'),
     apiKeyInput: document.querySelector('#apiKeyInput'),
     saveKeyBtn: document.querySelector('#saveKeyBtn'),
+    clearKeyBtn: document.querySelector('#clearKeyBtn'),
     apiStatus: document.querySelector('#apiStatus'),
     modelName: document.querySelector('#modelName')
   };
@@ -32,12 +33,21 @@
     return localStorage.getItem('gemini_api_key') || '';
   }
 
+  function maskKey(key) {
+    if (!key) return '';
+    if (key.length <= 8) return '****';
+    return key.slice(0, 4) + '••••••••' + key.slice(-4);
+  }
+
   function init() {
     const savedKey = getApiKey();
     if (savedKey) {
-      elements.apiKeyInput.value = savedKey;
-      elements.apiStatus.textContent = '✅ API Key 已載入';
+      elements.apiKeyInput.placeholder = '已儲存：' + maskKey(savedKey) + '（貼上新 Key 即可更換）';
+      elements.apiStatus.textContent = '✅ API Key 已載入（' + maskKey(savedKey) + '）';
       elements.apiStatus.className = 'api-status ok';
+    } else {
+      elements.apiStatus.textContent = '尚未設定 Key，將無法使用 AI 猜題';
+      elements.apiStatus.className = 'api-status';
     }
 
     if (elements.modelName) {
@@ -319,8 +329,18 @@
         return;
       }
       localStorage.setItem('gemini_api_key', key);
-      elements.apiStatus.textContent = '✅ API Key 已儲存';
+      elements.apiKeyInput.value = '';
+      elements.apiKeyInput.placeholder = '已儲存：' + maskKey(key) + '（貼上新 Key 即可更換）';
+      elements.apiStatus.textContent = '✅ API Key 已儲存（' + maskKey(key) + '）';
       elements.apiStatus.className = 'api-status ok';
+    });
+
+    elements.clearKeyBtn.addEventListener('click', function () {
+      localStorage.removeItem('gemini_api_key');
+      elements.apiKeyInput.value = '';
+      elements.apiKeyInput.placeholder = '貼上你的 Gemini API Key';
+      elements.apiStatus.textContent = '已清除 Key，輸入新的即可使用';
+      elements.apiStatus.className = 'api-status';
     });
 
     elements.apiKeyInput.addEventListener('keydown', function (e) {
