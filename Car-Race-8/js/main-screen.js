@@ -1,9 +1,9 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v7
+   Car-Race-8 · main-screen.js v9
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 賽車以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
-   - 起跑線垂直於跑道切線，配合真正的跑道角度
+   - 起跑線位於跑道最上方頂點（垂直於切線）
    - 無飄移：7 條固定車道（法向量偏移）
    ============================================================ */
 (function () {
@@ -81,15 +81,15 @@
     return { nx: -dy / len, ny: dx / len };
   }
 
-  /* ── 決定起跑進度（右側垂直路段，x 最大處，再上移約 1cm） ── */
+  /* ── 決定起跑進度（跑道最上方頂點處） ── */
   let START_IDX = 0;
   (function findStartIdx() {
-    let maxX = -Infinity;
+    let minY = Infinity;
     for (let i = 0; i < trackLen(); i++) {
-      if (path[i * 2] > maxX) { maxX = path[i * 2]; START_IDX = i; }
+      if (path[i * 2 + 1] < minY) { minY = path[i * 2 + 1]; START_IDX = i; }
     }
   })();
-  const START_PROG = (START_IDX - 6.4) / trackLen();
+  const START_PROG = START_IDX / trackLen();
   RACE.startProgress = START_PROG;
 
   /* ═══════════ 真正的跑道（繪於底圖上方） ═══════════ */
@@ -124,15 +124,6 @@
       stroke: '#c9a86a', 'stroke-width': TRACK.roadWidth,
       'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.45,
     }));
-
-    // 路緣線（兩側）
-    [TRACK.roadWidth / 2 - 8, -(TRACK.roadWidth / 2 - 8)].forEach(function (off) {
-      el.roadLayer.appendChild(elSvg('path', {
-        d: offsetPathD(off), fill: 'none',
-        stroke: '#f4f4f6', 'stroke-width': 4,
-        'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-      }));
-    });
 
     // 中央虛線
     el.roadLayer.appendChild(elSvg('path', {
@@ -267,7 +258,7 @@
     el.qrContainer.innerHTML = '';
     const base = location.origin + location.pathname.replace(/[^/]*$/, '');
     const url = base + 'mobile.html?room=' + encodeURIComponent(ROOM);
-    new QRCode(el.qrContainer, { text: url, width: 112, height: 112 });
+    new QRCode(el.qrContainer, { text: url, width: 96, height: 96 });
   }
 
   /* ── Ably ── */

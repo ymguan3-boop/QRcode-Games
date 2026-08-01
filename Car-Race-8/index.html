@@ -6,7 +6,7 @@
   <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=8">
+  <link rel="stylesheet" href="css/main-screen.css?v=9">
 </head>
 <body>
   <div class="app">
@@ -20,15 +20,15 @@
             <stop offset="60%" stop-color="#8fd0f5"/>
             <stop offset="100%" stop-color="#ccebff"/>
           </linearGradient>
-          <!-- 賽車深色輪廓（較細）：dilate 3/2/1 -->
+          <!-- 賽車深色輪廓（極細）：dilate 1.5/1/0.5，深黑 -->
           <filter id="carOutline" x="-50%" y="-50%" width="200%" height="200%">
-            <feMorphology operator="dilate" radius="3" in="SourceAlpha" result="outerDilate"/>
+            <feMorphology operator="dilate" radius="1.5" in="SourceAlpha" result="outerDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
             <feComposite operator="in" in2="outerDilate" result="outerBlack"/>
-            <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="midDilate"/>
+            <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="midDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
             <feComposite operator="in" in2="midDilate" result="midBlack"/>
-            <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="innerDilate"/>
+            <feMorphology operator="dilate" radius="0.5" in="SourceAlpha" result="innerDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
             <feComposite operator="in" in2="innerDilate" result="innerBlack"/>
             <feMerge>
@@ -103,6 +103,6 @@
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
   <script src="js/track-path.js?v=9"></script>
-  <script src="js/main-screen.js?v=8"></script>
+  <script src="js/main-screen.js?v=9"></script>
 </body>
 </html>

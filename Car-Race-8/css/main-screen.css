@@ -39,39 +39,39 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
   pointer-events: none;
 }
 
-/* ═══════ 左側工具列（賽況 + QR） ═══════ */
+/* ═══════ 左側工具列（賽況 + QR，窄版靠左上不擋跑道） ═══════ */
 .toolbar {
-  position: absolute; top: 50%; left: 20px;
-  transform: translateY(-50%);
+  position: absolute; top: 14px; left: 14px;
+  transform: none;
   z-index: 20;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px 16px;
+  border-radius: 14px;
+  padding: 10px;
   backdrop-filter: blur(8px);
-  width: 230px;
+  width: 128px;
   box-shadow: 0 6px 24px rgba(18,50,95,.18);
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: center;
 }
-.toolbar-title { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
-.hud-logo { font-size: 34px; filter: drop-shadow(0 0 8px rgba(245,184,0,.55)); }
+.toolbar-title { display: flex; align-items: center; gap: 8px; width: 100%; }
+.hud-logo { font-size: 22px; filter: drop-shadow(0 0 6px rgba(245,184,0,.55)); }
 .toolbar-title h1 {
   font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
-  font-size: 21px; font-weight: 900; letter-spacing: 2px;
-  line-height: 1.15;
+  font-size: 13px; font-weight: 900; letter-spacing: 1px;
+  line-height: 1.1;
   background: linear-gradient(90deg, #0a6bd6, #e8366f);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.toolbar-title p { font-size: 10px; letter-spacing: 3px; color: var(--muted); font-family: 'Orbitron'; }
+.toolbar-title p { display: none; }
 
 .status-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 800;
-  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 800;
 }
-.status-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: #8aa0bf; }
+.status-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #8aa0bf; }
 .status-badge.online { background: rgba(22,163,74,.14); color: var(--green); }
 .status-badge.online .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .status-badge.ready { background: rgba(10,166,224,.14); color: var(--cyan); }
@@ -81,36 +81,36 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 
 .hud-stat {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 4px 2px; font-size: 13px; color: var(--muted);
+  width: 100%;
+  padding: 2px 4px; font-size: 11px; color: var(--muted);
 }
 .hud-stat b {
-  font-family: 'Orbitron'; font-size: 22px; color: var(--text);
+  font-family: 'Orbitron'; font-size: 17px; color: var(--text);
 }
-.hud-stat:nth-child(4) b { color: var(--cyan); }
-.hud-stat:nth-child(5) b { color: var(--pink); }
+.hud-stat:nth-child(3) b { color: var(--cyan); }
+.hud-stat:nth-child(4) b { color: var(--pink); }
 
 .toolbar-divider {
-  height: 1px;
+  height: 1px; width: 100%;
   background: var(--border);
-  margin: 6px 0 2px;
+  margin: 2px 0;
 }
 
 /* QR 掃碼區塊 */
 .qr-block {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
-.qr-label { font-size: 12px; font-weight: 800; color: var(--cyan); }
+.qr-label { font-size: 10px; font-weight: 800; color: var(--cyan); text-align: center; }
 .qr-frame {
-  background: #fff; padding: 8px; border-radius: 12px;
-  width: 128px; height: 128px;
+  background: #fff; padding: 6px; border-radius: 10px;
+  width: 116px; height: 116px;
   display: grid; place-items: center;
   box-shadow: 0 0 16px rgba(10,166,224,.28);
 }
 .qr-frame img { display: block; }
-.qr-hint { font-size: 10px; color: var(--muted); text-align: center; line-height: 1.5; }
+.qr-hint { font-size: 9px; color: var(--muted); text-align: center; line-height: 1.4; }
 
 @media (max-width: 1100px) {
-  .toolbar { left: 10px; width: 190px; padding: 14px 12px; }
-  .toolbar-title h1 { font-size: 17px; }
-  .qr-frame { width: 126px; height: 126px; }
+  .toolbar { left: 8px; top: 8px; width: 116px; padding: 8px; }
+  .qr-frame { width: 104px; height: 104px; }
 }
