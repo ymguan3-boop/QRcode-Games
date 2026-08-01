@@ -1,10 +1,10 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v11
+   Car-Race-8 · main-screen.js v12
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 賽車以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
     - 起跑線位於跑道上方正中間（距 640,84 最近處）
-    - 無飄移：3 種行駛路線（寬/中/窄），共 17 條車道
+    - 3 種行駛路線（寬/中/窄），車可重疊、同時從起跑線出發
    ============================================================ */
 (function () {
   'use strict';
@@ -37,12 +37,13 @@
   const ROOM = new URLSearchParams(location.search).get('room') || Math.random().toString(36).slice(2, 7);
 
   /* ── 比賽參數 ── */
+  const MAX_PLAYERS = 10;
   const RACE = {
     laps: 1,
     lapDur: { min: 13, max: 18 },
-    maxCars: 12,
+    maxCars: 24,
     minGap: 40,
-    startStagger: 0.005,
+    startStagger: 0.0,
     startProgress: 0.0,
   };
 
@@ -182,14 +183,15 @@
     const carEl = createCarEl(carType, imgData);
     const idx = nextCarId++;
 
-    const stagger = (carState.size % 7) * RACE.startStagger;
     const s = {
       el: carEl,
       routeIdx: routeIdx,
       laneIdx: laneIdx,
-      progress: RACE.startProgress + stagger,
+      progress: RACE.startProgress,
       done: false,
       carType: carType,
+      isPlayer: !!imgData,
+      tl: null,
     };
     carState.set(idx, s);
 
@@ -207,6 +209,7 @@
     );
 
     const tl = GSAP.timeline({ onComplete: function () { finishCar(idx); } });
+    s.tl = tl;
 
     tl.to({}, { duration: HOLD }, 0);
 
@@ -242,15 +245,24 @@
     const s = carState.get(idx);
     if (!s) return;
     s.done = true;
+    if (s.tl) { try { s.tl.kill(); } catch (_) {} }
     s.el.parentNode && s.el.parentNode.removeChild(s.el);
     carState.delete(idx);
+    syncCarLayer();
   }
 
   function retireOldest() {
-    let oldest = null;
+    // 優先移除 demo 車（isPlayer=false）；全為玩家車時才移除最舊玩家車
+    let demo = null, playerOldest = null;
     for (const [k, v] of carState) {
-      if (v.done) { v.el.parentNode && v.el.parentNode.removeChild(v.el); carState.delete(k); continue; }
-      if (!oldest || v.progress > oldest.progress) oldest = v;
+      if (v.done) { finishCar(k); continue; }
+      if (!v.isPlayer) demo = demo || v;
+      if (!playerOldest || v.progress > playerOldest.progress) playerOldest = v;
+    }
+    const victim = demo || playerOldest;
+    if (!victim) return;
+    for (const [k, v] of carState) {
+      if (v === victim) { finishCar(k); break; }
     }
   }
 
@@ -265,29 +277,54 @@
   }
 
   /* ── Ably ── */
+  let ablyClient = null;
   function setupAbly() {
     if (typeof Ably === 'undefined') { setBadge('offline', ' Ably 未載入'); return; }
     try {
       const ably = new Ably.Realtime({ key: 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc', clientId: 'screen-' + Math.random().toString(36).slice(2, 6) });
+      ablyClient = ably;
 
       ably.connection.on(function (s) {
-        if (s.current === 'connected') { setBadge('online', ' 線上'); el.playerCount.textContent = '0'; }
+        if (s.current === 'connected') { setBadge('online', ' 線上'); enterScreenPresence(); }
         else if (s.current === 'failed' || s.current === 'suspended') setBadge('offline', ' 斷線');
       });
 
       const channel = ably.channels.get('carrace-' + ROOM);
 
-      channel.presence.subscribe(function () { channel.presence.get(function (e, m) { el.playerCount.textContent = String(m.filter(function (x) { return x.clientId && x.clientId.startsWith('player-'); }).length); }); });
+      channel.presence.subscribe(function () { refreshPlayerCount(channel); });
 
       channel.subscribe(function (msg) {
         const d = msg.data;
-        if (d && d.carType && d.imageData) spawnCar(d.imageData, d.carType);
+        if (d && d.carType && d.imageData) {
+          spawnCar(d.imageData, d.carType);
+          // 確認回覆：讓手機端知道已上賽道
+          try { channel.publish('ack', { id: d.id }); } catch (_) {}
+        }
       });
 
       ably.connection.once(function (s) {
         if (s.current !== 'connected') { console.warn('Ably not connected'); setBadge('offline', ' 未連線'); }
       });
+
+      // 大螢幕關閉/重整時，立即離開 presence，手機端可即時偵測離線
+      window.addEventListener('beforeunload', function () {
+        try { channel.presence.leave(); } catch (_) {}
+      });
     } catch (e) { console.error('Ably init error', e); setBadge('offline', ' 連線錯誤'); }
+  }
+
+  function enterScreenPresence() {
+    try {
+      const ch = ablyClient && ablyClient.channels.get('carrace-' + ROOM);
+      if (ch && ch.presence) ch.presence.enter('screen');
+    } catch (_) {}
+  }
+
+  function refreshPlayerCount(channel) {
+    channel.presence.get(function (e, m) {
+      const n = (m || []).filter(function (x) { return x.clientId && x.clientId.startsWith('player-'); }).length;
+      el.playerCount.textContent = String(n) + '/' + MAX_PLAYERS;
+    });
   }
 
   function setBadge(cls, text) { el.statusBadge.className = 'status-badge ' + cls; el.statusBadge.querySelector('.label').textContent = text; }

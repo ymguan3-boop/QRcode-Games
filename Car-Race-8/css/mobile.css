@@ -72,6 +72,41 @@ input { touch-action: manipulation; }
 #guideCanvas { z-index: 1; }
 #lineCanvas { z-index: 3; pointer-events: none; }
 
+/* 車庫 */
+.garage-section { display: flex; flex-direction: column; gap: 5px; }
+.garage-title { font-size: 11px; font-weight: 800; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; }
+.garage-title span { font-size: 9px; font-weight: 600; color: var(--muted); opacity: .8; }
+.garage-list {
+  display: flex; gap: 8px; overflow-x: auto;
+  padding: 2px 2px 4px;
+}
+.garage-list::-webkit-scrollbar { height: 4px; }
+.garage-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+.garage-card {
+  flex-shrink: 0;
+  width: 68px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px;
+  display: flex; flex-direction: column; gap: 4px;
+  align-items: center;
+}
+.garage-card img {
+  width: 48px; height: 48px; object-fit: contain;
+  background: #fff; border-radius: 6px;
+}
+.garage-meta { font-size: 9px; font-weight: 800; color: var(--muted); }
+.garage-send {
+  width: 100%; padding: 4px 0;
+  border: none; border-radius: 7px;
+  background: linear-gradient(135deg, var(--yellow), #ff9d00);
+  color: #111; font-size: 11px; font-weight: 900;
+  cursor: pointer;
+}
+.garage-send:disabled { opacity: .4; cursor: not-allowed; }
+.garage-empty { font-size: 10px; color: var(--muted); padding: 6px 2px; }
+
 /* 車款選擇 */
 .car-select {
   display: flex; gap: 6px; justify-content: center;

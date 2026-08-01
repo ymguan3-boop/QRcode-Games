@@ -13,6 +13,11 @@
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
   const channelName = function (room) { return 'carrace-' + room; };
 
+  const IDLE_LIMIT_MS = 10 * 60 * 1000;   // 閒置 10 分鐘強制斷線
+  const MAX_PLAYERS = 10;                 // 同時最大連線玩家數
+  const GARAGE_KEY = 'carrace-garage';    // 車庫 localStorage key
+  const GARAGE_MAX = 3;                   // 車庫最多 3 台，新車取代最舊
+
   const guideCanvas = document.getElementById('guideCanvas');
   const drawCanvas = document.getElementById('drawCanvas');
   const lineCanvas = document.getElementById('lineCanvas');
@@ -40,19 +45,33 @@
     submitBtn: document.getElementById('submitBtn'),
     statusMsg: document.getElementById('statusMsg'),
     successModal: document.getElementById('successModal'),
-    againBtn: document.getElementById('againBtn')
+    againBtn: document.getElementById('againBtn'),
+    garageList: document.getElementById('garageList'),
+    disconnectModal: document.getElementById('disconnectModal'),
+    discTitle: document.getElementById('discTitle'),
+    discText: document.getElementById('discText'),
+    discOkBtn: document.getElementById('discOkBtn')
   };
 
   let ably = null;
   let channel = null;
   let isConnected = false;
   let roomId = '';
+  let myClientId = 'player-' + Math.random().toString(36).substring(2, 8);
+  let screenOnline = false;
+  let wasScreenOnline = false;
+  let roomFull = false;
+  let enteredPresence = false;
+  let ackSubscribed = false;
+  let lastSentId = null;
+  let idleTimer = null;
+  let garage = [];
 
   let maskImageData = null;
-  let maskColorable = null;   // 可著色的白色區塊（像素級 boolean）
+  let maskColorable = null;
   let maskLoaded = false;
   let maskLoadToken = 0;
-  let currentCarType = 'sedan';
+  let currentCarType = 'sports';
   let isDrawing = false;
   let lastPoint = null;
   let tool = 'brush';
@@ -61,9 +80,32 @@
   let history = [];
   let hasDrawing = false;
 
+  /* ═══════════ 閒置計時（10 分鐘無操作強制斷線） ═══════════ */
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(forceIdleDisconnect, IDLE_LIMIT_MS);
+  }
+  function stopIdle() { clearTimeout(idleTimer); idleTimer = null; }
+  function forceIdleDisconnect() {
+    stopIdle();
+    try { if (channel && channel.presence) channel.presence.leave(); } catch (_) {}
+    try { if (ably) ably.close(); } catch (_) {}
+    isConnected = false;
+    enteredPresence = false;
+    channel = null;
+    setConnected(false);
+    updateSubmitBtn();
+    showDisconnectModal('連線已中斷', '連線閒置超過 10 分鐘，已自動斷線。請重新整理頁面即可重新連線，繼續送出你的賽車。');
+  }
+  function bindIdleReset() {
+    ['pointerdown', 'pointermove', 'pointerup', 'click', 'input'].forEach(function (evt) {
+      document.addEventListener(evt, function () { if (isConnected) resetIdle(); }, true);
+    });
+  }
+
   /* ═══════════ 遮罩載入（頂視車輪廓） ═══════════ */
   function maskSrc() {
-    return (CAR_TYPES[currentCarType] || CAR_TYPES.sedan).src;
+    return (CAR_TYPES[currentCarType] || CAR_TYPES.sports).src;
   }
 
   function loadMask(type) {
@@ -72,7 +114,7 @@
     maskLoaded = false;
     const maskImg = new Image();
     maskImg.onload = function () {
-      if (token !== maskLoadToken) return; // 已切換車款，丟棄舊結果
+      if (token !== maskLoadToken) return;
       const offscreen = document.createElement('canvas');
       offscreen.width = CANVAS_W;
       offscreen.height = CANVAS_H;
@@ -83,7 +125,6 @@
       drawLineArt();
       maskLoaded = true;
 
-      // 引導圖：淡色輪廓 + 棋盤底
       drawGuide();
       drawCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
       history = [];
@@ -106,7 +147,6 @@
     for (let i = 0, p = 0; p < data.length; p += 4, i++) {
       const a = data[p + 3];
       const r = data[p], g = data[p + 1], b = data[p + 2];
-      // 車體內部：不透明 且 偏白（低彩度、高亮度）＝可著色
       if (a >= 128 && r >= 200 && g >= 200 && b >= 200) {
         maskColorable[i] = 1;
       }
@@ -122,10 +162,10 @@
     const od = out.data;
     for (let p = 0; p < data.length; p += 4) {
       const a = data[p + 3];
-      if (a < 128) continue; // 透明＝遮罩外
+      if (a < 128) continue;
       const r = data[p], g = data[p + 1], b = data[p + 2];
       const lum = (r + g + b) / 3;
-      if (lum < 160) { // 深色（黑線/輪廓）→ 純黑
+      if (lum < 160) {
         od[p] = 0; od[p + 1] = 0; od[p + 2] = 0; od[p + 3] = 255;
       }
     }
@@ -158,7 +198,7 @@
     ctx.restore();
   }
 
-  /* ═══════════ 畫布縮放（維持 619:1189 比例） ═══════════ */
+  /* ═══════════ 畫布縮放 ═══════════ */
   function fitCanvas() {
     const wrap = document.querySelector('.canvas-wrap');
     const availW = wrap.clientWidth - 16;
@@ -267,7 +307,8 @@
 
   /* ═══════════ UI 狀態 ═══════════ */
   function updateSubmitBtn() {
-    el.submitBtn.disabled = !(isConnected && hasDrawing);
+    const canSend = isConnected && hasDrawing && screenOnline && !roomFull && maskLoaded;
+    el.submitBtn.disabled = !canSend;
     el.submitBtn.innerHTML = '&#128663; 送出賽車去比賽';
   }
 
@@ -278,9 +319,37 @@
 
   function setConnected(online) {
     isConnected = online;
-    el.connBadge.textContent = online ? '已連線' : '連線中';
-    el.connBadge.className = 'conn-badge ' + (online ? 'online' : 'offline');
+    if (!online) {
+      el.connBadge.textContent = '連線中';
+      el.connBadge.className = 'conn-badge offline';
+    } else {
+      updateScreenBadge();
+    }
     updateSubmitBtn();
+  }
+
+  function updateScreenBadge() {
+    if (!isConnected) return;
+    if (roomFull) {
+      el.connBadge.textContent = '已滿(' + MAX_PLAYERS + ')';
+      el.connBadge.className = 'conn-badge offline';
+    } else if (screenOnline) {
+      el.connBadge.textContent = '已連線';
+      el.connBadge.className = 'conn-badge online';
+    } else {
+      el.connBadge.textContent = '大螢幕離線';
+      el.connBadge.className = 'conn-badge offline';
+    }
+  }
+
+  function showDisconnectModal(title, text) {
+    if (el.discTitle) el.discTitle.textContent = title;
+    if (el.discText) el.discText.textContent = text;
+    el.disconnectModal.classList.remove('hidden');
+  }
+
+  function hideDisconnectModal() {
+    el.disconnectModal.classList.add('hidden');
   }
 
   /* ═══════════ Ably 連線 ═══════════ */
@@ -296,7 +365,7 @@
     try {
       ably = new Ably.Realtime({
         key: ABLY_KEY,
-        clientId: 'player-' + Math.random().toString(36).substring(2, 8),
+        clientId: myClientId,
         transportParams: { maxMessageSize: 500000 }
       });
     } catch (err) {
@@ -307,12 +376,22 @@
     }
 
     ably.connection.on('connected', function () {
-      setConnected(true);
-      channel = ably.channels.get(channelName(room));
-      channel.subscribe('ack', function () {
-        setMsg('賽車已送出，準備出發！', 'ok');
-      });
-      channel.presence.enter('player');
+      isConnected = true;
+      if (!channel) channel = ably.channels.get(channelName(room));
+      if (!ackSubscribed) {
+        ackSubscribed = true;
+        channel.subscribe('ack', function (msg) {
+          if (msg.data && msg.data.id && msg.data.id === lastSentId) {
+            setMsg('賽車已上賽道，準備出發！', 'ok');
+          }
+        });
+      }
+      channel.presence.subscribe(function () { updateScreenState(); });
+      enteredPresence = false;
+      tryEnterPresence();
+      updateScreenState();
+      resetIdle();
+      updateSubmitBtn();
       setMsg(maskLoaded ? '已連線，開始上色吧！' : '連線中，載入賽車模型...', 'ok');
     });
 
@@ -329,75 +408,122 @@
 
     ably.connection.on('disconnected', function () {
       setConnected(false);
+      screenOnline = false;
+      // Ably 會自動重連，不需關閉
+      setMsg('連線中斷，嘗試重新連線中...', 'err');
     });
 
-    window.addEventListener('pagehide', function () {
-      leavePresence();
-    });
-    window.addEventListener('beforeunload', function () {
-      leavePresence();
-    });
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'hidden') {
-        leavePresence();
+    // 僅在真正關閉頁面時中斷（不再於切換背景/鎖屏時斷線）
+    window.addEventListener('beforeunload', function () { leavePresence(); });
+  }
+
+  function tryEnterPresence() {
+    if (!channel || enteredPresence || !isConnected) return;
+    channel.presence.get(function (err, members) {
+      if (err) return;
+      const others = (members || []).filter(function (m) {
+        return m.clientId && m.clientId.startsWith('player-') && m.clientId !== myClientId;
+      });
+      if (others.length >= MAX_PLAYERS) {
+        roomFull = true;
+        updateScreenBadge();
+        setMsg('連線玩家已滿（' + MAX_PLAYERS + '人），請稍後再試', 'err');
+        setTimeout(tryEnterPresence, 5000);
+        updateSubmitBtn();
+        return;
       }
+      roomFull = false;
+      channel.presence.enter('player');
+      enteredPresence = true;
+      updateScreenBadge();
+      updateSubmitBtn();
+    });
+  }
+
+  function updateScreenState() {
+    if (!channel) return;
+    channel.presence.get(function (err, members) {
+      if (err) return;
+      const screen = (members || []).filter(function (m) {
+        return m.clientId && m.clientId.startsWith('screen-');
+      });
+      screenOnline = screen.length > 0;
+      if (wasScreenOnline && !screenOnline) {
+        // 大螢幕離線提示（僅轉態時提醒一次）
+        showDisconnectModal('大螢幕已離線', '已無法確認大螢幕在線，此時送出可能無法顯示。請確認大螢幕已開啟，再重新送出。');
+      } else if (!wasScreenOnline && screenOnline) {
+        // 大螢幕恢復在線時自動關閉提示
+        hideDisconnectModal();
+      }
+      wasScreenOnline = screenOnline;
+      updateScreenBadge();
+      updateSubmitBtn();
     });
   }
 
   function leavePresence() {
-    try {
-      if (channel && channel.presence) channel.presence.leave();
-      if (ably) ably.close();
-    } catch (_) {}
+    stopIdle();
+    try { if (channel && channel.presence) channel.presence.leave(); } catch (_) {}
+    try { if (ably) ably.close(); } catch (_) {}
   }
 
   /* ═══════════ 送出賽車 ═══════════ */
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+  }
+
   function submitCar() {
     if (!isConnected || !hasDrawing || !maskLoaded) {
       setMsg('尚未連線或無繪圖內容', 'err');
       return;
     }
     if (!channel) return;
+    if (!screenOnline) {
+      setMsg('大螢幕未連線，請確認大螢幕已開啟', 'err');
+      return;
+    }
+    if (roomFull) {
+      setMsg('連線玩家已滿（' + MAX_PLAYERS + '人），請稍後再試', 'err');
+      return;
+    }
     el.submitBtn.disabled = true;
     el.submitBtn.innerHTML = '傳送中...';
 
     try {
-      // 縮小輸出圖，加速傳輸與大螢幕即時載入
       const OUT_W = 240;
-      const OUT_H = Math.round(CANVAS_H * OUT_W / CANVAS_W); // 保留 619:1189 比例
+      const OUT_H = Math.round(CANVAS_H * OUT_W / CANVAS_W);
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = OUT_W;
       tempCanvas.height = OUT_H;
       const tCtx = tempCanvas.getContext('2d');
-      // 第一層：著色內容（僅白區），整車輪廓裁切
       tCtx.drawImage(drawCanvas, 0, 0, OUT_W, OUT_H);
       applyMaskToScaled(tCtx, OUT_W, OUT_H);
-      // 第二層：黑白線稿置頂
       tCtx.drawImage(lineCanvas, 0, 0, OUT_W, OUT_H);
 
       const base64 = tempCanvas.toDataURL('image/png');
-      const msgId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      const msgId = genId();
+      lastSentId = msgId;
       channel.publish('car', { id: msgId, imageData: base64, carType: currentCarType }, function (err) {
         if (err) {
           setMsg('傳送失敗，請重試', 'err');
           console.error('[submit] publish error:', err);
-          el.submitBtn.disabled = false;
           updateSubmitBtn();
           return;
         }
+        addToGarage(base64, currentCarType);
+        showSuccess();
+        clearCanvas();
+        updateSubmitBtn();
       });
     } catch (err) {
       console.error('[submit] error:', err);
       setMsg('傳送失敗，請重試', 'err');
+      updateSubmitBtn();
     }
-
-    showSuccess();
-    clearCanvas();
   }
 
   function applyMaskToScaled(ctx, w, h) {
     if (!maskImageData) return;
-    // 將原解析度遮罩縮放比對小尺寸畫布
     const sW = CANVAS_W / w;
     const sH = CANVAS_H / h;
     const imageData = ctx.getImageData(0, 0, w, h);
@@ -414,6 +540,82 @@
       }
     }
     ctx.putImageData(imageData, 0, 0);
+  }
+
+  /* ═══════════ 車庫（最多 3 台，新車取代最舊） ═══════════ */
+  function loadGarage() {
+    try {
+      const raw = localStorage.getItem(GARAGE_KEY);
+      garage = raw ? JSON.parse(raw) : [];
+    } catch (_) { garage = []; }
+    if (!Array.isArray(garage)) garage = [];
+    renderGarage();
+  }
+
+  function saveGarage() {
+    try { localStorage.setItem(GARAGE_KEY, JSON.stringify(garage)); } catch (_) {}
+  }
+
+  function addToGarage(imageData, carType) {
+    garage.push({ imageData: imageData, carType: carType, ts: Date.now() });
+    while (garage.length > GARAGE_MAX) garage.shift();
+    saveGarage();
+    renderGarage();
+  }
+
+  function sendGarageCar(item) {
+    if (!isConnected || !channel) { setMsg('尚未連線，無法送出', 'err'); return; }
+    if (!screenOnline) { setMsg('大螢幕未連線，請確認大螢幕已開啟', 'err'); return; }
+    if (roomFull) { setMsg('連線玩家已滿（' + MAX_PLAYERS + '人），請稍後再試', 'err'); return; }
+
+    const msgId = genId();
+    lastSentId = msgId;
+    channel.publish('car', { id: msgId, imageData: item.imageData, carType: item.carType }, function (err) {
+      if (err) {
+        setMsg('傳送失敗，請重試', 'err');
+        console.error('[garage] publish error:', err);
+        return;
+      }
+      setMsg('車庫賽車已送出！', 'ok');
+    });
+    showSuccess();
+  }
+
+  function renderGarage() {
+    if (!el.garageList) return;
+    el.garageList.innerHTML = '';
+    if (!garage.length) {
+      const empty = document.createElement('div');
+      empty.className = 'garage-empty';
+      empty.textContent = '尚無畫作，送出後自動存入車庫（最多 3 台）';
+      el.garageList.appendChild(empty);
+      return;
+    }
+    garage.forEach(function (item, i) {
+      const card = document.createElement('div');
+      card.className = 'garage-card';
+
+      const img = document.createElement('img');
+      img.src = item.imageData;
+      img.alt = '車庫' + (i + 1);
+      card.appendChild(img);
+
+      const meta = document.createElement('div');
+      meta.className = 'garage-meta';
+      meta.textContent = (CAR_TYPES[item.carType] || { label: '賽車' }).label + ' · ' + (i + 1);
+      card.appendChild(meta);
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'garage-send';
+      sendBtn.textContent = '直接送出';
+      sendBtn.addEventListener('click', function () {
+        sendGarageCar(item);
+        resetIdle();
+      });
+      card.appendChild(sendBtn);
+
+      el.garageList.appendChild(card);
+    });
   }
 
   function showSuccess() {
@@ -433,6 +635,7 @@
       btn.textContent = CAR_TYPES[key].label;
       btn.addEventListener('click', function () {
         selectCar(key);
+        resetIdle();
       });
       el.carSelect.appendChild(btn);
     });
@@ -464,21 +667,25 @@
       color = swatch.dataset.color;
       tool = 'brush';
       el.eraserBtn.classList.remove('active');
+      resetIdle();
     });
 
     el.eraserBtn.addEventListener('click', function () {
       tool = tool === 'eraser' ? 'brush' : 'eraser';
       el.eraserBtn.classList.toggle('active', tool === 'eraser');
+      resetIdle();
     });
 
-    el.undoBtn.addEventListener('click', undo);
-    el.clearBtn.addEventListener('click', clearCanvas);
-    el.submitBtn.addEventListener('click', submitCar);
+    el.undoBtn.addEventListener('click', function () { undo(); resetIdle(); });
+    el.clearBtn.addEventListener('click', function () { clearCanvas(); resetIdle(); });
+    el.submitBtn.addEventListener('click', function () { submitCar(); resetIdle(); });
     el.againBtn.addEventListener('click', hideSuccess);
+    el.discOkBtn.addEventListener('click', hideDisconnectModal);
 
     el.sizeSlider.addEventListener('input', function () {
       brushSize = parseInt(el.sizeSlider.value, 10);
       el.sizeDisplay.textContent = brushSize;
+      resetIdle();
     });
   }
 
@@ -511,6 +718,8 @@
     buildPalette();
     buildCarSelect();
     bindEvents();
+    bindIdleReset();
+    loadGarage();
     loadMask('sports');
     fitCanvas();
     window.addEventListener('resize', fitCanvas);

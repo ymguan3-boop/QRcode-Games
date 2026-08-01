@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Flower 1 世�?�?/title>
+  <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/main-screen.css?v=12">
@@ -11,7 +11,7 @@
 <body>
   <div class="app">
 
-    <!-- ?��??��??��??��??��???大螢幕賽?�場?��?�?賽�?.png ?��??��? ?��??��??��??��??��???-->
+    <!-- ═══════════ 大螢幕賽道場景（以 賽道.png 為背景） ═══════════ -->
     <div class="stage">
       <svg id="sceneSvg" viewBox="0 0 1300 800" preserveAspectRatio="xMidYMid meet">
         <defs>
@@ -20,7 +20,7 @@
             <stop offset="60%" stop-color="#8fd0f5"/>
             <stop offset="100%" stop-color="#ccebff"/>
           </linearGradient>
-          <!-- 賽�?深色輪�?（極細�?：dilate 0.19/0.13/0.06，深�?-->
+          <!-- 賽車深色輪廓（極細）：dilate 0.19/0.13/0.06，深黑 -->
           <filter id="carOutline" x="-50%" y="-50%" width="200%" height="200%">
             <feMorphology operator="dilate" radius="0.19" in="SourceAlpha" result="outerDilate"/>
             <feFlood flood-color="#000000" flood-opacity="1"/>
@@ -38,7 +38,7 @@
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <!-- 終�?棋盤�?-->
+          <!-- 終點棋盤紋 -->
           <pattern id="checker" width="16" height="16" patternUnits="userSpaceOnUse">
             <rect width="8" height="8" fill="#111"/>
             <rect x="8" y="8" width="8" height="8" fill="#111"/>
@@ -47,54 +47,55 @@
           </pattern>
         </defs>
 
-        <!-- ?�景天空 -->
+        <!-- 背景天空 -->
         <rect id="skyRect" x="0" y="0" width="1300" height="800" fill="url(#skyGrad)"/>
 
-        <!-- 賽�?底�?（�?底層?�景，全?�面�?-->
-        <image id="trackImage" href="賽�?.png?v=12" x="0" y="0" width="1300" height="800" preserveAspectRatio="none"/>
+        <!-- 賽道底圖（最底層背景，全畫面） -->
+        <image id="trackImage" href="賽道.png?v=12" x="0" y="0" width="1300" height="800" preserveAspectRatio="none"/>
 
-        <!-- ?�正?��??��??��??��??��? -->
+        <!-- 真正的跑道（在底圖上方） -->
         <g id="roadLayer"></g>
 
-        <!-- 起�?棋盤線�??�側�?-->
+        <!-- 起跑棋盤線（右側） -->
         <g id="startGroup"></g>
 
-        <!-- 賽�??�層（�?跑�??��?座�?系�? -->
+        <!-- 賽車圖層（與跑道同一座標系） -->
         <g id="carLayer" class="car-layer"></g>
       </svg>
 
-      <!-- ?��??��??��??��??��???左側工具?��?賽�? + QR ?�碼�??��??��??��??��??��???-->
+      <!-- ═══════════ 左側工具列（賽況 + QR 掃碼） ═══════════ -->
       <aside class="toolbar">
         <div class="toolbar-title">
           <span class="hud-logo">&#127937;</span>
           <div>
-            <h1>Flower 1 世�?�?/h1>
+            <h1>Flower 1 世界賽</h1>
             <p>FLOWER 1 WORLD CUP</p>
           </div>
         </div>
 
         <div id="statusBadge" class="status-badge offline">
-          <span class="dot"></span><span class="label"> ?��??�中...</span>
+          <span class="dot"></span><span class="label"> 初始化中...</span>
         </div>
 
         <div class="hud-stat">
-          <span>賽�?上�?�?/span>
+          <span>賽道上車輛</span>
           <b id="activeCars">0</b>
         </div>
         <div class="hud-stat">
-          <span>?�家???</span>
+          <span>玩家連線</span>
           <b id="playerCount">0</b>
         </div>
 
         <div class="toolbar-divider"></div>
 
         <div class="qr-block">
-          <div class="qr-label">?��??�碼，�??��??�賽�?/div>
+          <div class="qr-label">手機掃碼，著色你的賽車</div>
           <div id="qrContainer" class="qr-frame"></div>
-          <div class="qr-hint">?�色完�??�出，賽車�??�在起�?線就位出??/div>
+          <div class="qr-hint">著色完成送出，賽車立刻在起跑線就位出發</div>
           <div class="qr-rule">
-            ???規�?：�??��??��??��??�面?�斷線�??�置 10 ?��??��??��???br>
-            ?��??��?<b>10</b> 位玩家�????          </div>
+            連線規則：關閉或離開手機頁面即斷線；閒置 10 分鐘自動斷線。<br>
+            同時最多 <b>10</b> 位玩家連線。
+          </div>
         </div>
       </aside>
     </div>
