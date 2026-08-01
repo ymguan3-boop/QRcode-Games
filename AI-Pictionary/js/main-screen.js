@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const GEMINI_MODEL = 'gemini-3.5-flash';
   const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
   const GEMINI_SYSTEM_PROMPT = '你是一位幽默熱情的 Pictionary 遊戲主持人。請觀察這張玩家的畫作，猜測他畫的是什麼，並給予 100 字以內的幽默點評與相似度評分 (1-100分)。請用以下格式回應：\n\n答案：[你猜的答案]\n評分：[分數]\n\n[你的幽默點評]';
 
