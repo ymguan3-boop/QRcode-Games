@@ -26,6 +26,9 @@
   /* ── 車道偏移（法向量方向，共 7 條） ── */
   const LANE_OFFSETS = [-30, -20, -10, 0, 10, 20, 30];
 
+  /* ── 房間代號（畫面自己的 URL 參數，或隨機產生） ── */
+  const ROOM = new URLSearchParams(location.search).get('room') || Math.random().toString(36).slice(2, 7);
+
   /* ── 比賽參數 ── */
   const RACE = {
     laps: 1,
@@ -33,7 +36,7 @@
     maxCars: 12,
     fadeAfterFinish: 0.8,
     minGap: 40,
-    startStagger: 0.04,
+    startStagger: 0.005,
     startProgress: 0.0,
   };
 
@@ -104,7 +107,7 @@
   }
   const LANES = computeLanePaths();
 
-  /* ── 決定起跑索引（右側垂直路段，x 最大處） ── */
+  /* ── 決定起跑進度（右側垂直路段，x 最大處，再上移約 1cm ≈ 30 單位） ── */
   let START_IDX = 0;
   (function findStartIdx() {
     let maxX = -Infinity;
@@ -112,17 +115,19 @@
       if (path[i * 2] > maxX) { maxX = path[i * 2]; START_IDX = i; }
     }
   })();
+  const START_PROG = (START_IDX - 6.4) / trackLen();
+  RACE.startProgress = START_PROG;
 
   /* ── 賽車圖層 ── */
   const carState = new Map();
   let nextCarId = 0;
 
-  function makeCarSvg(type) {
+  function makeCarSvg(type, imgData) {
     const spec = CAR[type];
     const ns = 'http://www.w3.org/2000/svg';
     const g = document.createElementNS(ns, 'g');
     const img = document.createElementNS(ns, 'image');
-    img.setAttribute('href', 'assets/' + spec.mask);
+    img.setAttribute('href', imgData || ('assets/' + spec.mask));
     img.setAttribute('x', String(-spec.w / 2));
     img.setAttribute('y', String(-spec.h / 2));
     img.setAttribute('width', String(spec.w));
@@ -132,13 +137,13 @@
     return g;
   }
 
-  function createCarEl(type) {
+  function createCarEl(type, imgData) {
     const wrap = document.createElement('div');
     wrap.className = 'car-wrap';
 
     const svgWrap = document.createElement('div');
     svgWrap.style.cssText = 'position:absolute;overflow:visible;pointer-events:none;';
-    svgWrap.appendChild(makeCarSvg(type));
+    svgWrap.appendChild(makeCarSvg(type, imgData));
     wrap.appendChild(svgWrap);
     el.carLayer.appendChild(wrap);
     return wrap;
@@ -161,7 +166,7 @@
     const spec = CAR[carType];
     const pts = LANES[laneIdx];
 
-    const carEl = createCarEl(carType);
+    const carEl = createCarEl(carType, imgData);
     carEl.style.opacity = '0';
     GSAP.set(carEl, { opacity: 0 });
 
@@ -183,9 +188,9 @@
     // 淡入
     tl.to(carEl, { opacity: 1, duration: 0.3 }, 0);
 
-    // 沿路徑移動
+    // 沿路徑移動（起跑線出發，跑完 1 圈回到起跑線）
     tl.to({ p: RACE.startProgress + stagger }, {
-      p: 1,
+      p: RACE.startProgress + RACE.laps,
       duration: dur,
       ease: 'none',
       onUpdate: function () {
@@ -236,9 +241,9 @@
 
   function syncCarLayer() { el.activeCars.textContent = carState.size; }
 
-  /* ── 起跑棋盤線（右側） ── */
+  /* ── 起跑棋盤線（右側，上移約 1cm） ── */
   function buildFinishLine() {
-    const t = START_IDX / trackLen();
+    const t = START_PROG;
     const pt = trackPt(t);
     const n  = trackNormal(t);
     const halfW = TRACK.roadWidth / 2 + 5;
@@ -299,8 +304,9 @@
   /* ── QR ── */
   function showQR() {
     el.qrContainer.innerHTML = '';
-    const room = 'carrace-' + Math.random().toString(36).slice(2, 7);
-    const url = location.origin + location.pathname + '?room=' + room;
+    // 指向 mobile.html 並帶入房間代號（不重複加 carrace- 前綴）
+    const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+    const url = base + 'mobile.html?room=' + encodeURIComponent(ROOM);
     new QRCode(el.qrContainer, { text: url, width: 160, height: 160 });
   }
 
@@ -315,13 +321,13 @@
         else if (s.current === 'failed' || s.current === 'suspended') setBadge('offline', ' 斷線');
       });
 
-      const channel = ably.channels.get('carrace-' + (new URLSearchParams(location.search).get('room') || 'lobby'));
+      const channel = ably.channels.get('carrace-' + ROOM);
 
-      channel.presence.subscribe(function () { channel.presence.get(function (e, m) { el.playerCount.textContent = String(m.filter(function (x) { return x.clientId && x.clientId.startsWith('mob-'); }).length); }); });
+      channel.presence.subscribe(function () { channel.presence.get(function (e, m) { el.playerCount.textContent = String(m.filter(function (x) { return x.clientId && x.clientId.startsWith('player-'); }).length); }); });
 
       channel.subscribe(function (msg) {
         const d = msg.data;
-        if (d && d.type === 'car') spawnCar(d.image, d.carType || 'sports');
+        if (d && d.carType && d.imageData) spawnCar(d.imageData, d.carType);
       });
 
       ably.connection.once(function (s) {
