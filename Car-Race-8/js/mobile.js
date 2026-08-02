@@ -5,9 +5,12 @@
   const CANVAS_H = 1189;
 
   const CAR_TYPES = {
-    sports:  { label: '跑車', src: 'assets/mask-sports.png' },
-    offroad: { label: '越野', src: 'assets/mask-offroad.png' },
-    muscle:  { label: '肌肉', src: 'assets/mask-muscle.png' }
+    bike1:  { label: '腳踏車', cat: 'bicycle',    src: 'assets/mask-bike1.png'  },
+    moto1:  { label: '機車1',   cat: 'motorcycle', src: 'assets/mask-moto1.png'  },
+    moto2:  { label: '機車2',   cat: 'motorcycle', src: 'assets/mask-moto2.png'  },
+    sport4: { label: '跑車4',   cat: 'sports',     src: 'assets/mask-sport4.png' },
+    sport5: { label: '跑車5',   cat: 'sports',     src: 'assets/mask-sport5.png' },
+    sport6: { label: '跑車6',   cat: 'sports',     src: 'assets/mask-sport6.png' }
   };
 
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
@@ -73,7 +76,7 @@
   let maskColorable = null;
   let maskLoaded = false;
   let maskLoadToken = 0;
-  let currentCarType = 'sports';
+  let currentCarType = 'bike1';
   let isDrawing = false;
   let lastPoint = null;
   let tool = 'brush';
@@ -107,7 +110,7 @@
 
   /* ═══════════ 遮罩載入（頂視車輪廓） ═══════════ */
   function maskSrc() {
-    return (CAR_TYPES[currentCarType] || CAR_TYPES.sports).src;
+    return (CAR_TYPES[currentCarType] || CAR_TYPES.bike1).src;
   }
 
   function loadMask(type) {
@@ -729,7 +732,7 @@
     bindEvents();
     bindIdleReset();
     loadGarage();
-    loadMask('sports');
+    loadMask('bike1');
     fitCanvas();
     window.addEventListener('resize', fitCanvas);
     window.addEventListener('orientationchange', function () {

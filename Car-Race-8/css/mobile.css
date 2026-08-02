@@ -151,10 +151,11 @@ input { touch-action: manipulation; }
 
 /* 車款選擇 */
 .car-select {
-  display: flex; gap: 6px; justify-content: center;
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
 }
 .car-type-btn {
-  flex: 1;
+  flex: 1 1 calc(33.333% - 6px);
+  min-width: 72px;
   padding: 8px 4px;
   border: 1px solid var(--border); border-radius: 10px;
   background: var(--card); color: var(--muted);

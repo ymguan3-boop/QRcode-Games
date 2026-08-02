@@ -12,7 +12,7 @@ QR Code 互動遊戲：玩家用手機掃碼，為頂視賽車著色，送出後
 ┌──────────────────────┐   QR Code 含 ?room=race-xxxx   ┌──────────────────────┐
 │ 大螢幕 index.html      │ ◀──────────────────────────▶ │ 手機 mobile.html      │
 │ Ably host             │   channel: carrace-<room>     │ Ably player           │
-│ 8字型賽道場景           │   message: car / ack          │ 4 款車型遮罩著色        │
+│ 8字型賽道場景           │   message: car / ack          │ 6 款交通工具遮罩著色    │
 │ GSAP MotionPath 競速   │                              │ 送出縮小版 Base64 PNG  │
 └──────────────────────┘                              └──────────────────────┘
 ```
@@ -38,7 +38,7 @@ npx serve . -l 3000
 
 - 每台車隨機速度跑 1 圈，到達終點即淡出消失
 - 不顯示排名
-- 手機可選擇 4 款車型：房車 / 跑車 / 越野 / 肌肉（車型影響大螢幕上的車身大小）
+- 手機可選擇 6 款交通工具（腳踏車 / 機車 / 跑車），分類影響行駛音效與大螢幕上的車身大小
 - 每台車隨機分配一條橫向偏移車道，路線多樣化
 - 起跑區為 F1 風格：交錯格位 P1~P5 + 五燈式發車燈 + 終點棋盤線
 - 賽道同時最多 12 台車，超過時移除最舊車輛（防記憶體堆積）
@@ -49,10 +49,11 @@ npx serve . -l 3000
 
 | 項目 | 位置 |
 |------|------|
-| 賽車輪廓遮罩 | `assets/car-mask.png`（房車）、`assets/mask-sports.svg`（跑車）、`assets/mask-offroad.svg`（越野）、`assets/mask-muscle.svg`（肌肉） |
+| 交通工具輪廓遮罩 | `assets/mask-bike1.png`（腳踏車）、`assets/mask-moto1.png` / `mask-moto2.png`（機車）、`assets/mask-sport4.png` / `mask-sport5.png` / `mask-sport6.png`（跑車） |
 | 圈數 / 速度 / 上限 | `js/main-screen.js` 的 `RACE` 設定 |
 | 賽道大小 | `js/main-screen.js` 的 `TRACK` 設定 |
-| 車款尺寸 / 車道偏移 | `js/main-screen.js` 的 `CAR_SIZE` / `LANE_OFFSETS` |
+| 車款尺寸 / 車道偏移 | `js/main-screen.js` 的 `CAR` / `ROUTES` |
+| 行駛音效（3 種分類音色） | `js/main-screen.js` 的 `TIMBRE_BASE` |
 | 手機調色盤 | `js/mobile.js` 的 `buildPalette()` |
 | 手機車款清單 | `js/mobile.js` 的 `CAR_TYPES` |
 

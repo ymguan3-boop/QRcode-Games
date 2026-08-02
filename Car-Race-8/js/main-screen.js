@@ -1,11 +1,10 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v13
+   Car-Race-8 · main-screen.js v14
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
-   - 賽車以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
-    - 起跑線位於跑道上方正中間（距 640,84 最近處）
-    - 3 種行駛路線（寬/中/窄），車可重疊、同時從起跑線出發
-    - 每台車行駛時播放引擎聲（3 種車型各有不同音效，Web Audio 合成）
+   - 交通工具以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
+   - 6 種交通工具（腳踏車×1、機車×2、跑車×3），3 種行駛路線可重疊
+   - 每台車行駛時播放聲音（3 種分類音色：腳踏車/機車/跑車，Web Audio 合成）
    ============================================================ */
 (function () {
   'use strict';
@@ -20,18 +19,21 @@
   /* ── 賽道 ── */
   const TRACK = { roadWidth: 120 };
 
-  /* ── 賽車規格（×1.2 放大） ── */
+  /* ── 交通工具規格（×1.2 放大），cat 決定音色分類 ── */
   const CAR = {
-    sports:  { w: 64, h: 104, mask: 'mask-sports.png'  },
-    offroad: { w: 71, h: 114, mask: 'mask-offroad.png' },
-    muscle:  { w: 68, h: 108, mask: 'mask-muscle.png'  },
+    bike1:  { w: 52, h: 100, mask: 'mask-bike1.png',  cat: 'bicycle'    },
+    moto1:  { w: 56, h: 108, mask: 'mask-moto1.png',  cat: 'motorcycle' },
+    moto2:  { w: 54, h: 104, mask: 'mask-moto2.png',  cat: 'motorcycle' },
+    sport4: { w: 62, h: 114, mask: 'mask-sport4.png', cat: 'sports'     },
+    sport5: { w: 64, h: 116, mask: 'mask-sport5.png', cat: 'sports'     },
+    sport6: { w: 66, h: 118, mask: 'mask-sport6.png', cat: 'sports'     },
   };
 
-  /* ── 引擎音效基頻（車種） ── */
+  /* ── 行駛音效基頻（3 種分類音色：腳踏車/機車/跑車） ── */
   const TIMBRE_BASE = {
-    sports:  { base: 150, oscType: 'sawtooth', filter: 2200, gain: 0.05, pulse: 8,  second: 1.5 },
-    offroad: { base: 95,  oscType: 'square',   filter: 1400, gain: 0.045, pulse: 5,  second: 1.3 },
-    muscle:  { base: 60,  oscType: 'sawtooth', filter: 900,  gain: 0.06, pulse: 3,   second: 2 },
+    bicycle:    { base: 180, oscType: 'triangle', filter: 1200, gain: 0.035, pulse: 3, second: 1.2 },  // 腳踏車：輕盈高音
+    motorcycle: { base: 105, oscType: 'square',   filter: 1600, gain: 0.05,  pulse: 6, second: 1.5 },  // 機車：中頻帶噗噗
+    sports:     { base: 68,  oscType: 'sawtooth', filter: 1000, gain: 0.06,  pulse: 4, second: 2 },    // 跑車：低沉轟鳴
   };
 
   /* ── 3 種行駛路線（法向量偏移），每條隨機選一道 ── */
@@ -198,12 +200,12 @@
       if (c && c.state === 'suspended') { try { c.resume(); } catch (_) {} }
     }
 
-    function startVoice(idx, carType, baseFreq) {
+    function startVoice(idx, cat, baseFreq) {
       if (!enabled) return;
       const c = ensureCtx();
       if (!c) return;
       try {
-        const tb = TIMBRE_BASE[carType] || TIMBRE_BASE.sports;
+        const tb = TIMBRE_BASE[cat] || TIMBRE_BASE.sports;
         const t = c.currentTime;
 
         // 主 Gain（淡入避免爆音）
@@ -358,8 +360,9 @@
     // 立即定位於起跑線（尚未移動）
     applyTrack(s);
 
-    // 播放引擎聲（車種決定音色，頻率隨進度升高 = 加速感）
-    SOUND.startVoice(idx, carType, (TIMBRE_BASE[carType] || TIMBRE_BASE.sports).base);
+    // 播放行駛音效（依分類取音色，頻率隨進度升高 = 加速感）
+    const cat = (CAR[carType] || CAR.sport6).cat;
+    SOUND.startVoice(idx, cat, (TIMBRE_BASE[cat] || TIMBRE_BASE.sports).base);
     s.hasSound = true;
 
     const dur = RACE.lapDur.min + Math.random() * (RACE.lapDur.max - RACE.lapDur.min);
@@ -498,7 +501,7 @@
 
   /* ── Demo ── */
   function runDemo() {
-    const types = ['sports', 'offroad', 'muscle'];
+    const types = ['bike1', 'moto1', 'moto2', 'sport4', 'sport5', 'sport6'];
     function scheduleNext() {
       const delay = 1800 + Math.random() * 2500;
       setTimeout(function () {
