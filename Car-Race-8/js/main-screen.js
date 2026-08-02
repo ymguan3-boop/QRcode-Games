@@ -1,5 +1,5 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v16
+   Car-Race-8 · main-screen.js v17
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 交通工具以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
@@ -326,7 +326,7 @@
     const g = elSvg('g', { class: 'car-wrap' });
     const scaleG = elSvg('g', { class: 'car-scale' });
     const img = elSvg('image', {
-      href: imgData || ('assets/' + spec.mask + '?v=16'),
+      href: imgData || ('assets/' + spec.mask + '?v=17'),
       x: String(-spec.w / 2), y: String(-spec.h / 2),
       width: String(spec.w), height: String(spec.h),
       filter: 'url(#carOutline)',
@@ -338,7 +338,7 @@
   }
 
   function spawnCar(imgData, carType) {
-    if (carState.size >= RACE.maxCars) { retireOldest(); }
+    if (carState.size >= RACE.maxCars) { return false; }
 
     const routeIdx = Math.floor(Math.random() * ROUTES.length);
     const laneIdx  = Math.floor(Math.random() * ROUTES[routeIdx].length);
@@ -395,6 +395,8 @@
     }, HOLD);
 
     tl.to(scaleG, { opacity: 0, duration: 0.4 }, HOLD + dur + 0.2);
+    syncTrackPresence();
+    return true;
   }
 
   function applyTrack(s) {
@@ -419,17 +421,16 @@
     s.el.parentNode && s.el.parentNode.removeChild(s.el);
     carState.delete(idx);
     syncCarLayer();
+    syncTrackPresence();
   }
 
   function retireOldest() {
-    // 優先移除 demo 車（isPlayer=false）；全為玩家車時才移除最舊玩家車
-    let demo = null, playerOldest = null;
+    // 僅移除最舊玩家車（達上限時由 spawnCar 回絕，此函式保留為安全備援）
+    let victim = null;
     for (const [k, v] of carState) {
       if (v.done) { finishCar(k); continue; }
-      if (!v.isPlayer) demo = demo || v;
-      if (!playerOldest || v.progress > playerOldest.progress) playerOldest = v;
+      if (!victim || v.progress > victim.progress) victim = v;
     }
-    const victim = demo || playerOldest;
     if (!victim) return;
     for (const [k, v] of carState) {
       if (v === victim) { finishCar(k); break; }
@@ -466,9 +467,9 @@
       channel.subscribe(function (msg) {
         const d = msg.data;
         if (d && d.carType && d.imageData) {
-          spawnCar(d.imageData, d.carType);
-          // 確認回覆：讓手機端知道已上賽道
-          try { channel.publish('ack', { id: d.id }); } catch (_) {}
+          const ok = spawnCar(d.imageData, d.carType);
+          // 確認回覆：讓手機端知道已上賽道（滿場時回 full 讓手機提示）
+          try { channel.publish('ack', { id: d.id, full: !ok }); } catch (_) {}
         }
       });
 
@@ -486,7 +487,19 @@
   function enterScreenPresence() {
     try {
       const ch = ablyClient && ablyClient.channels.get('carrace-' + ROOM);
-      if (ch && ch.presence) ch.presence.enter('screen');
+      if (ch && ch.presence) ch.presence.enter(trackPresenceData());
+    } catch (_) {}
+  }
+
+  /* 大螢幕把「目前車輛數 / 上限」寫入 presence data，手機端據此判斷能否送出 */
+  function trackPresenceData() {
+    return { role: 'screen', cars: carState.size, max: RACE.maxCars };
+  }
+  function syncTrackPresence() {
+    if (!ablyClient) return;
+    try {
+      const ch = ablyClient.channels.get('carrace-' + ROOM);
+      if (ch && ch.presence) ch.presence.update(trackPresenceData());
     } catch (_) {}
   }
 

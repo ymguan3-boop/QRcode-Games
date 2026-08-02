@@ -5,12 +5,12 @@
   const CANVAS_H = 1189;
 
   const CAR_TYPES = {
-    moto1:  { label: '機車',    cat: 'motorcycle', src: 'assets/mask-moto1.png?v=16'  },
-    sport4: { label: '跑車1',   cat: 'sports',     src: 'assets/mask-sport4.png?v=16' },
-    sport5: { label: '跑車2',   cat: 'sports',     src: 'assets/mask-sport5.png?v=16' },
-    sport6: { label: '跑車3',   cat: 'sports',     src: 'assets/mask-sport6.png?v=16' },
-    sport7: { label: '跑車4',   cat: 'sports',     src: 'assets/mask-sport7.png?v=16' },
-    sport8: { label: '跑車5',   cat: 'sports',     src: 'assets/mask-sport8.png?v=16' }
+    moto1:  { label: '機車',    cat: 'motorcycle', src: 'assets/mask-moto1.png?v=17'  },
+    sport4: { label: '跑車1',   cat: 'sports',     src: 'assets/mask-sport4.png?v=17' },
+    sport5: { label: '跑車2',   cat: 'sports',     src: 'assets/mask-sport5.png?v=17' },
+    sport6: { label: '跑車3',   cat: 'sports',     src: 'assets/mask-sport6.png?v=17' },
+    sport7: { label: '跑車4',   cat: 'sports',     src: 'assets/mask-sport7.png?v=17' },
+    sport8: { label: '跑車5',   cat: 'sports',     src: 'assets/mask-sport8.png?v=17' }
   };
 
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
@@ -66,6 +66,9 @@
   let screenOnline = false;
   let wasScreenOnline = false;
   let roomFull = false;
+  let trackCars = 0;        // 目前賽道上車輛數（來自大螢幕 presence data）
+  let trackMax = 0;         // 賽道上限
+  let trackFull = false;    // 賽道已滿（上限內不可送出）
   let enteredPresence = false;
   let ackSubscribed = false;
   let lastSentId = null;
@@ -312,7 +315,7 @@
 
   /* ═══════════ UI 狀態 ═══════════ */
   function updateSubmitBtn() {
-    const canSend = isConnected && hasDrawing && screenOnline && !roomFull && maskLoaded;
+    const canSend = isConnected && hasDrawing && screenOnline && !roomFull && !trackFull && maskLoaded;
     el.submitBtn.disabled = !canSend;
     el.submitBtn.innerHTML = '&#128663; 送出賽車去比賽';
   }
@@ -387,7 +390,11 @@
         ackSubscribed = true;
         channel.subscribe('ack', function (msg) {
           if (msg.data && msg.data.id && msg.data.id === lastSentId) {
-            setMsg('賽車已上賽道，準備出發！', 'ok');
+            if (msg.data.full) {
+              setMsg('賽車場上車輛太多了!請稍後派車', 'err');
+            } else {
+              setMsg('賽車已上賽道，準備出發！', 'ok');
+            }
           }
         });
       }
@@ -453,6 +460,17 @@
         return m.clientId && m.clientId.startsWith('screen-');
       });
       screenOnline = screen.length > 0;
+
+      // 讀取大螢幕 presence data 中的車輛數/上限，判斷賽道是否已滿
+      if (screenOnline && screen[0].data && typeof screen[0].data === 'object') {
+        trackCars = screen[0].data.cars || 0;
+        trackMax = screen[0].data.max || 0;
+      } else {
+        trackCars = 0;
+        trackMax = 0;
+      }
+      trackFull = trackMax > 0 && trackCars >= trackMax;
+
       if (wasScreenOnline && !screenOnline) {
         // 大螢幕離線提示（僅轉態時提醒一次）
         showDisconnectModal('大螢幕已離線', '已無法確認大螢幕在線，此時送出可能無法顯示。請確認大螢幕已開啟，再重新送出。');
@@ -489,6 +507,10 @@
     }
     if (roomFull) {
       setMsg('連線玩家已滿（' + MAX_PLAYERS + '人），請稍後再試', 'err');
+      return;
+    }
+    if (trackFull) {
+      setMsg('賽車場上車輛太多了!請稍後派車', 'err');
       return;
     }
     el.submitBtn.disabled = true;

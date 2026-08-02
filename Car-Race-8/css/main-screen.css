@@ -147,6 +147,13 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 }
 .qr-rule b { color: #e8366f; font-family: 'Orbitron'; }
 
+/* 製作人註記（工具列最下方） */
+.toolbar-credit {
+  font-size: 9px; font-weight: 700; color: var(--muted);
+  text-align: center; width: 100%;
+  padding: 2px 0 0;
+}
+
 @media (max-width: 1100px) {
   .toolbar { left: 8px; top: 8px; width: 116px; padding: 8px; }
   .qr-frame { width: 104px; height: 104px; }
