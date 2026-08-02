@@ -21,9 +21,9 @@
 
   /* ── 交通工具規格（×1.2 放大），cat 決定音色分類 ── */
   const CAR = {
-    bike1:  { w: 52, h: 100, mask: 'mask-bike1.png',  cat: 'bicycle'    },
-    moto1:  { w: 56, h: 108, mask: 'mask-moto1.png',  cat: 'motorcycle' },
-    moto2:  { w: 54, h: 104, mask: 'mask-moto2.png',  cat: 'motorcycle' },
+    bike1:  { w: 36, h: 70,  mask: 'mask-bike1.png',  cat: 'bicycle'    },
+    moto1:  { w: 39, h: 76,  mask: 'mask-moto1.png',  cat: 'motorcycle' },
+    moto2:  { w: 38, h: 73,  mask: 'mask-moto2.png',  cat: 'motorcycle' },
     sport4: { w: 62, h: 114, mask: 'mask-sport4.png', cat: 'sports'     },
     sport5: { w: 64, h: 116, mask: 'mask-sport5.png', cat: 'sports'     },
     sport6: { w: 66, h: 118, mask: 'mask-sport6.png', cat: 'sports'     },
@@ -326,7 +326,7 @@
     const g = elSvg('g', { class: 'car-wrap' });
     const scaleG = elSvg('g', { class: 'car-scale' });
     const img = elSvg('image', {
-      href: imgData || ('assets/' + spec.mask),
+      href: imgData || ('assets/' + spec.mask + '?v=15'),
       x: String(-spec.w / 2), y: String(-spec.h / 2),
       width: String(spec.w), height: String(spec.h),
       filter: 'url(#carOutline)',

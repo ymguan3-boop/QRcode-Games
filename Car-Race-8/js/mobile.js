@@ -5,12 +5,12 @@
   const CANVAS_H = 1189;
 
   const CAR_TYPES = {
-    bike1:  { label: '腳踏車', cat: 'bicycle',    src: 'assets/mask-bike1.png'  },
-    moto1:  { label: '機車1',   cat: 'motorcycle', src: 'assets/mask-moto1.png'  },
-    moto2:  { label: '機車2',   cat: 'motorcycle', src: 'assets/mask-moto2.png'  },
-    sport4: { label: '跑車4',   cat: 'sports',     src: 'assets/mask-sport4.png' },
-    sport5: { label: '跑車5',   cat: 'sports',     src: 'assets/mask-sport5.png' },
-    sport6: { label: '跑車6',   cat: 'sports',     src: 'assets/mask-sport6.png' }
+    bike1:  { label: '腳踏車', cat: 'bicycle',    src: 'assets/mask-bike1.png?v=15'  },
+    moto1:  { label: '機車1',   cat: 'motorcycle', src: 'assets/mask-moto1.png?v=15'  },
+    moto2:  { label: '機車2',   cat: 'motorcycle', src: 'assets/mask-moto2.png?v=15'  },
+    sport4: { label: '跑車1',   cat: 'sports',     src: 'assets/mask-sport4.png?v=15' },
+    sport5: { label: '跑車2',   cat: 'sports',     src: 'assets/mask-sport5.png?v=15' },
+    sport6: { label: '跑車3',   cat: 'sports',     src: 'assets/mask-sport6.png?v=15' }
   };
 
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
