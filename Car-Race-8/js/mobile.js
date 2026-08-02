@@ -46,6 +46,8 @@
     statusMsg: document.getElementById('statusMsg'),
     successModal: document.getElementById('successModal'),
     againBtn: document.getElementById('againBtn'),
+    garageToggle: document.getElementById('garageToggle'),
+    garageSection: document.getElementById('garageSection'),
     garageList: document.getElementById('garageList'),
     disconnectModal: document.getElementById('disconnectModal'),
     discTitle: document.getElementById('discTitle'),
@@ -581,6 +583,12 @@
     showSuccess();
   }
 
+  function toggleGarage() {
+    const open = el.garageSection.classList.toggle('open');
+    el.garageToggle.classList.toggle('active', open);
+    if (open) renderGarage();
+  }
+
   function renderGarage() {
     if (!el.garageList) return;
     el.garageList.innerHTML = '';
@@ -676,6 +684,7 @@
       resetIdle();
     });
 
+    el.garageToggle.addEventListener('click', function () { toggleGarage(); resetIdle(); });
     el.undoBtn.addEventListener('click', function () { undo(); resetIdle(); });
     el.clearBtn.addEventListener('click', function () { clearCanvas(); resetIdle(); });
     el.submitBtn.addEventListener('click', function () { submitCar(); resetIdle(); });

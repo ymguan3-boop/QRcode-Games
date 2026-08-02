@@ -1,4 +1,4 @@
-# AI 猜猜看（AI Pictionary）互動繪畫遊戲
+﻿# AI 猜猜看（AI Pictionary）互動繪畫遊戲
 
 > 大螢幕投影 + 手機掃碼畫畫，Google Gemini AI 即時猜測你的畫作並幽默點評、評分。
 > 全靜態、免後端，透過 **Ably Realtime（WSS 443）** 中繼，可穿透公司網路與電信 5G 防火牆。
@@ -61,7 +61,7 @@
 3. **進房**：手機掃 QR → 同樣建立 Ably 連線 → `presence.enter('player')` → 大螢幕列表即時更新為「1 位玩家連線中」。
 4. **送出**：手機 `canvas.toDataURL('image/png')` → `channel.publish('drawing', base64)`。
 5. **接收**：大螢幕訂閱 `drawing` → 建卡片進畫廊 → 回 `publish('ack',{id})` → 呼叫 Gemini。
-6. **AI 猜測**：Gemini 多模態模型（`gemini-2.5-flash-lite`）看圖猜測，回應解析出答案/評分/點評後顯示。
+6. **AI 猜測**：Gemini 多模態模型（`gemini-3.1-flash-lite`）看圖猜測，回應解析出答案/評分/點評後顯示。
 7. **離開**：手機 `pagehide`/`beforeunload` → `presence.leave()` + `ably.close()` → 大螢幕列表即時清空。
 
 ---
@@ -76,8 +76,8 @@
 | **Ably Realtime（WSS 443）** | ✅ | 與 HTTPS 同埠，實測穿透 |
 
 ### Gemini AI 整合
-- 模型：`gemini-2.5-flash-lite`（免費快速輕量版，支援圖片）。
-- 呼叫：`POST /v1beta/models/gemini-2.5-flash-lite:generateContent?key=<KEY>`，body 含圖片 Base64。
+- 模型：`gemini-3.1-flash-lite`（免費快速輕量版，支援圖片）。
+- 呼叫：`POST /v1beta/models/gemini-3.1-flash-lite:generateContent?key=<KEY>`，body 含圖片 Base64。
 - 提示詞要求：猜答案 + 相似度評分（1~100）+ 100 字內幽默點評，以「答案：/評分：」格式回傳。
 - 大螢幕用正規式解析回應，並 `escapeHtml` 後渲染，防止注入。
 

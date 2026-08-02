@@ -6,7 +6,7 @@
   <title>賽車著色</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/mobile.css?v=12">
+  <link rel="stylesheet" href="css/mobile.css?v=13">
 </head>
 <body>
   <div class="app-shell">
@@ -22,16 +22,16 @@
     </div>
 
     <div class="canvas-wrap">
+      <button id="garageToggle" class="garage-toggle">&#128663; 車庫</button>
+      <div class="garage-section" id="garageSection">
+        <div class="garage-title">我的車庫 <span>送出後自動存入，最多 3 台</span></div>
+        <div class="garage-list" id="garageList"></div>
+      </div>
       <div class="canvas-box" id="canvasBox">
         <canvas id="guideCanvas"></canvas>
         <canvas id="drawCanvas"></canvas>
         <canvas id="lineCanvas"></canvas>
       </div>
-    </div>
-
-    <div class="garage-section">
-      <div class="garage-title">我的車庫 <span>送出後自動存入，最多 3 台</span></div>
-      <div class="garage-list" id="garageList"></div>
     </div>
 
     <div class="car-select" id="carSelect"></div>
@@ -76,6 +76,6 @@
   </div>
 
   <script src="vendor/ably.min.js?v=1"></script>
-  <script src="js/mobile.js?v=12"></script>
+  <script src="js/mobile.js?v=13"></script>
 </body>
 </html>
