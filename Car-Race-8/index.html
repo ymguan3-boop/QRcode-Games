@@ -6,7 +6,7 @@
   <title>Flower 1 世界賽</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main-screen.css?v=12">
+  <link rel="stylesheet" href="css/main-screen.css?v=13">
 </head>
 <body>
   <div class="app">
@@ -88,6 +88,10 @@
 
         <div class="toolbar-divider"></div>
 
+        <button id="soundBtn" class="sound-btn" type="button">&#128266; 音效開</button>
+
+        <div class="toolbar-divider"></div>
+
         <div class="qr-block">
           <div class="qr-label">手機掃碼，著色你的賽車</div>
           <div id="qrContainer" class="qr-frame"></div>
@@ -97,6 +101,8 @@
             同時最多 <b>10</b> 位玩家連線。
           </div>
         </div>
+
+        <button id="fullscreenBtn" class="fullscreen-btn" type="button">&#128470; 放大為全螢幕</button>
       </aside>
     </div>
 
@@ -107,6 +113,6 @@
   <script src="vendor/ably.min.js?v=2"></script>
   <script src="vendor/qrcode.min.js?v=2"></script>
   <script src="js/track-path.js?v=12"></script>
-  <script src="js/main-screen.js?v=12"></script>
+  <script src="js/main-screen.js?v=13"></script>
 </body>
 </html>

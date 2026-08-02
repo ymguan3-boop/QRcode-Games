@@ -96,6 +96,36 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
   margin: 2px 0;
 }
 
+/* 音效開關按鈕 */
+.sound-btn {
+  width: 100%;
+  padding: 6px 4px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: rgba(10,166,224,.1); color: var(--cyan);
+  font-size: 11px; font-weight: 800;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.sound-btn.muted {
+  background: rgba(239,68,68,.12); color: #c0392b;
+  border-color: rgba(239,68,68,.3);
+}
+
+/* 全螢幕切換按鈕 */
+.fullscreen-btn {
+  width: 100%;
+  padding: 6px 4px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: rgba(10,166,224,.1); color: var(--cyan);
+  font-size: 11px; font-weight: 800;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.fullscreen-btn.fs-on {
+  background: rgba(22,163,74,.14); color: var(--green);
+  border-color: rgba(22,163,74,.3);
+}
+
 /* QR 掃碼區塊 */
 .qr-block {
   display: flex; flex-direction: column; align-items: center; gap: 6px;

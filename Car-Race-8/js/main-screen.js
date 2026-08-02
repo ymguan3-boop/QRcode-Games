@@ -1,10 +1,11 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v12
+   Car-Race-8 · main-screen.js v13
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 賽車以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
     - 起跑線位於跑道上方正中間（距 640,84 最近處）
     - 3 種行駛路線（寬/中/窄），車可重疊、同時從起跑線出發
+    - 每台車行駛時播放引擎聲（3 種車型各有不同音效，Web Audio 合成）
    ============================================================ */
 (function () {
   'use strict';
@@ -24,6 +25,13 @@
     sports:  { w: 64, h: 104, mask: 'mask-sports.png'  },
     offroad: { w: 71, h: 114, mask: 'mask-offroad.png' },
     muscle:  { w: 68, h: 108, mask: 'mask-muscle.png'  },
+  };
+
+  /* ── 引擎音效基頻（車種） ── */
+  const TIMBRE_BASE = {
+    sports:  { base: 150, oscType: 'sawtooth', filter: 2200, gain: 0.05, pulse: 8,  second: 1.5 },
+    offroad: { base: 95,  oscType: 'square',   filter: 1400, gain: 0.045, pulse: 5,  second: 1.3 },
+    muscle:  { base: 60,  oscType: 'sawtooth', filter: 900,  gain: 0.06, pulse: 3,   second: 2 },
   };
 
   /* ── 3 種行駛路線（法向量偏移），每條隨機選一道 ── */
@@ -57,6 +65,8 @@
     activeCars:  document.getElementById('activeCars'),
     playerCount: document.getElementById('playerCount'),
     qrContainer: document.getElementById('qrContainer'),
+    soundBtn:    document.getElementById('soundBtn'),
+    fullscreenBtn: document.getElementById('fullscreenBtn'),
   };
 
   /* ── 賽道座標 ── */
@@ -155,6 +165,156 @@
     }));
   }
 
+  /* ═══════════ 音效（Web Audio 合成引擎聲） ═══════════ */
+  const SOUND = (function () {
+    let ctx = null;
+    let master = null;
+    let enabled = true;
+    const voices = new Map();   // idx -> voice
+
+    function ensureCtx() {
+      if (ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try {
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.9;
+        // 壓縮器避免多台車同時發聲時爆音
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -18;
+        comp.knee.value = 10;
+        comp.ratio.value = 6;
+        comp.attack.value = 0.004;
+        comp.release.value = 0.15;
+        master.connect(comp);
+        comp.connect(ctx.destination);
+      } catch (e) { ctx = null; return null; }
+      return ctx;
+    }
+
+    function resume() {
+      const c = ensureCtx();
+      if (c && c.state === 'suspended') { try { c.resume(); } catch (_) {} }
+    }
+
+    function startVoice(idx, carType, baseFreq) {
+      if (!enabled) return;
+      const c = ensureCtx();
+      if (!c) return;
+      try {
+        const tb = TIMBRE_BASE[carType] || TIMBRE_BASE.sports;
+        const t = c.currentTime;
+
+        // 主 Gain（淡入避免爆音）
+        const out = c.createGain();
+        out.gain.setValueAtTime(0.0001, t);
+        out.gain.linearRampToValueAtTime(tb.gain, t + 0.4);
+        out.connect(master);
+
+        // 主振盪器 + 低通濾波
+        const osc = c.createOscillator();
+        osc.type = tb.oscType;
+        osc.frequency.setValueAtTime(baseFreq, t);
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = tb.filter;
+        lp.Q.value = 0.6;
+        osc.connect(lp);
+        lp.connect(out);
+
+        // 第二泛音（增加車種個性）
+        const osc2 = c.createOscillator();
+        osc2.type = tb.oscType;
+        osc2.frequency.setValueAtTime(baseFreq * tb.second, t);
+        const g2 = c.createGain();
+        g2.gain.value = 0.35;
+        osc2.connect(g2);
+        g2.connect(lp);
+
+        // 引擎「噗噗」脈衝（低頻 LFO 振幅調變，深度依基頻比例避免爆音）
+        const pulse = c.createOscillator();
+        pulse.type = 'sine';
+        pulse.frequency.value = tb.pulse * 2;
+        const pg = c.createGain();
+        pg.gain.value = tb.gain * 0.55;
+        pulse.connect(pg);
+        pg.connect(out.gain);
+
+        osc.start(t);
+        osc2.start(t);
+        pulse.start(t);
+
+        const voice = {
+          osc: osc, osc2: osc2, pulse: pulse, out: out, base: baseFreq,
+          stop: function () {
+            const now = ctx.currentTime;
+            try { out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(out.gain.value, now); out.gain.linearRampToValueAtTime(0.0001, now + 0.3); } catch (_) {}
+            setTimeout(function () {
+              try { osc.stop(); osc2.stop(); pulse.stop(); } catch (_) {}
+              try { out.disconnect(); } catch (_) {}
+            }, 400);
+          },
+          setPitch: function (f) {
+            const now = ctx.currentTime;
+            try {
+              osc.frequency.setTargetAtTime(f, now, 0.08);
+              osc2.frequency.setTargetAtTime(f * tb.second, now, 0.08);
+            } catch (_) {}
+          },
+        };
+        voices.set(idx, voice);
+      } catch (e) { console.warn('[sound] startVoice:', e); }
+    }
+
+    function stopVoice(idx) {
+      const v = voices.get(idx);
+      if (!v) return;
+      voices.delete(idx);
+      try { v.stop(); } catch (_) {}
+    }
+
+    function pitchVoice(idx, progress) {
+      const v = voices.get(idx);
+      if (!v) return;
+      // 音高隨進度(0→1) 提升約 1.4 倍，營造加速感
+      try { v.setPitch(v.base * (1 + progress * 0.4)); } catch (_) {}
+    }
+
+    function stopAll() {
+      voices.forEach(function (v, k) { try { v.stop(); } catch (_) {} });
+      voices.clear();
+    }
+
+    function setEnabled(on) {
+      enabled = on;
+      if (!on) stopAll();
+      else resume();
+      return enabled;
+    }
+
+    function isEnabled() { return enabled; }
+
+    // 點擊按鈕：首次點擊為「解鎖音訊」（瀏覽器需使用者手勢），之後才是開/關
+    function toggle() {
+      const c = ensureCtx();
+      const unlocked = c && c.state === 'running';
+      if (!unlocked) { resume(); return enabled; }
+      enabled = !enabled;
+      if (!enabled) stopAll(); else resume();
+      return enabled;
+    }
+
+    return { startVoice: startVoice, stopVoice: stopVoice, pitchVoice: pitchVoice, stopAll: stopAll, setEnabled: setEnabled, isEnabled: isEnabled, resume: resume, toggle: toggle };
+  })();
+
+  function updateSoundBtn() {
+    if (!el.soundBtn) return;
+    const on = SOUND.isEnabled();
+    el.soundBtn.innerHTML = (on ? '&#128266; 音效開' : '&#128263; 音效關');
+    el.soundBtn.classList.toggle('muted', !on);
+  }
+
   /* ═══════════ 賽車（SVG，與跑道同一座標系） ═══════════ */
   const carState = new Map();
   let nextCarId = 0;
@@ -198,6 +358,10 @@
     // 立即定位於起跑線（尚未移動）
     applyTrack(s);
 
+    // 播放引擎聲（車種決定音色，頻率隨進度升高 = 加速感）
+    SOUND.startVoice(idx, carType, (TIMBRE_BASE[carType] || TIMBRE_BASE.sports).base);
+    s.hasSound = true;
+
     const dur = RACE.lapDur.min + Math.random() * (RACE.lapDur.max - RACE.lapDur.min);
     const HOLD = 1.4;
     const scaleG = carEl.querySelector('.car-scale');
@@ -222,6 +386,8 @@
         if (!st || st.done) return;
         st.progress = this.targets()[0].p;
         applyTrack(st);
+        // 依車速調整引擎音高（進度越快音越高）
+        SOUND.pitchVoice(idx, st.progress);
       },
     }, HOLD);
 
@@ -246,6 +412,7 @@
     if (!s) return;
     s.done = true;
     if (s.tl) { try { s.tl.kill(); } catch (_) {} }
+    SOUND.stopVoice(idx);
     s.el.parentNode && s.el.parentNode.removeChild(s.el);
     carState.delete(idx);
     syncCarLayer();
@@ -347,5 +514,40 @@
   buildFinishLine();
   showQR();
   setupAbly();
+  updateSoundBtn();
+  if (el.soundBtn) {
+    el.soundBtn.addEventListener('click', function () {
+      SOUND.toggle();
+      updateSoundBtn();
+    });
+  }
+
+  /* ── 全螢幕切換 ── */
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  function requestFullscreen() {
+    const d = document.documentElement;
+    (d.requestFullscreen || d.webkitRequestFullscreen || function () {}).call(d);
+  }
+  function exitFullscreen() {
+    (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+  }
+  function updateFullscreenBtn() {
+    if (!el.fullscreenBtn) return;
+    const on = isFullscreen();
+    el.fullscreenBtn.innerHTML = (on ? '&#128682; 離開全螢幕' : '&#128470; 放大為全螢幕');
+    el.fullscreenBtn.classList.toggle('fs-on', on);
+  }
+  if (el.fullscreenBtn) {
+    el.fullscreenBtn.addEventListener('click', function () {
+      if (isFullscreen()) exitFullscreen();
+      else requestFullscreen();
+    });
+    document.addEventListener('fullscreenchange', updateFullscreenBtn);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenBtn);
+    updateFullscreenBtn();
+  }
+
   if (new URLSearchParams(location.search).has('demo')) runDemo();
 })();
