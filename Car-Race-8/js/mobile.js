@@ -5,12 +5,12 @@
   const CANVAS_H = 1189;
 
   const CAR_TYPES = {
-    bike1:  { label: '腳踏車', cat: 'bicycle',    src: 'assets/mask-bike1.png?v=15'  },
-    moto1:  { label: '機車1',   cat: 'motorcycle', src: 'assets/mask-moto1.png?v=15'  },
-    moto2:  { label: '機車2',   cat: 'motorcycle', src: 'assets/mask-moto2.png?v=15'  },
-    sport4: { label: '跑車1',   cat: 'sports',     src: 'assets/mask-sport4.png?v=15' },
-    sport5: { label: '跑車2',   cat: 'sports',     src: 'assets/mask-sport5.png?v=15' },
-    sport6: { label: '跑車3',   cat: 'sports',     src: 'assets/mask-sport6.png?v=15' }
+    moto1:  { label: '機車',    cat: 'motorcycle', src: 'assets/mask-moto1.png?v=16'  },
+    sport4: { label: '跑車1',   cat: 'sports',     src: 'assets/mask-sport4.png?v=16' },
+    sport5: { label: '跑車2',   cat: 'sports',     src: 'assets/mask-sport5.png?v=16' },
+    sport6: { label: '跑車3',   cat: 'sports',     src: 'assets/mask-sport6.png?v=16' },
+    sport7: { label: '跑車4',   cat: 'sports',     src: 'assets/mask-sport7.png?v=16' },
+    sport8: { label: '跑車5',   cat: 'sports',     src: 'assets/mask-sport8.png?v=16' }
   };
 
   const ABLY_KEY = 'XGHDcg.6rIvFg:As3RE8ShoT67QAg1O2GoyRSN50RosUlk5Yfwo4eJkBc';
@@ -76,7 +76,7 @@
   let maskColorable = null;
   let maskLoaded = false;
   let maskLoadToken = 0;
-  let currentCarType = 'bike1';
+  let currentCarType = 'moto1';
   let isDrawing = false;
   let lastPoint = null;
   let tool = 'brush';
@@ -110,7 +110,7 @@
 
   /* ═══════════ 遮罩載入（頂視車輪廓） ═══════════ */
   function maskSrc() {
-    return (CAR_TYPES[currentCarType] || CAR_TYPES.bike1).src;
+    return (CAR_TYPES[currentCarType] || CAR_TYPES.moto1).src;
   }
 
   function loadMask(type) {
@@ -732,7 +732,7 @@
     bindEvents();
     bindIdleReset();
     loadGarage();
-    loadMask('bike1');
+    loadMask('moto1');
     fitCanvas();
     window.addEventListener('resize', fitCanvas);
     window.addEventListener('orientationchange', function () {

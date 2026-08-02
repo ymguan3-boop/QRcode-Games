@@ -38,7 +38,7 @@ npx serve . -l 3000
 
 - 每台車隨機速度跑 1 圈，到達終點即淡出消失
 - 不顯示排名
-- 手機可選擇 6 款交通工具（腳踏車 / 機車 / 跑車），分類影響行駛音效與大螢幕上的車身大小
+- 手機可選擇 6 款交通工具（機車 / 跑車1~5），分類影響行駛音效與大螢幕上的車身大小
 - 每台車隨機分配一條橫向偏移車道，路線多樣化
 - 起跑區為 F1 風格：交錯格位 P1~P5 + 五燈式發車燈 + 終點棋盤線
 - 賽道同時最多 12 台車，超過時移除最舊車輛（防記憶體堆積）
@@ -49,7 +49,7 @@ npx serve . -l 3000
 
 | 項目 | 位置 |
 |------|------|
-| 交通工具輪廓遮罩 | `assets/mask-bike1.png`（腳踏車）、`assets/mask-moto1.png` / `mask-moto2.png`（機車）、`assets/mask-sport4.png` / `mask-sport5.png` / `mask-sport6.png`（跑車） |
+| 交通工具輪廓遮罩 | `assets/mask-moto1.png`（機車）、`assets/mask-sport4.png` / `mask-sport5.png` / `mask-sport6.png` / `mask-sport7.png` / `mask-sport8.png`（跑車1~5） |
 | 圈數 / 速度 / 上限 | `js/main-screen.js` 的 `RACE` 設定 |
 | 賽道大小 | `js/main-screen.js` 的 `TRACK` 設定 |
 | 車款尺寸 / 車道偏移 | `js/main-screen.js` 的 `CAR` / `ROUTES` |

@@ -1,10 +1,10 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v14
+   Car-Race-8 · main-screen.js v16
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 交通工具以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
-   - 6 種交通工具（腳踏車×1、機車×2、跑車×3），3 種行駛路線可重疊
-   - 每台車行駛時播放聲音（3 種分類音色：腳踏車/機車/跑車，Web Audio 合成）
+   - 6 種交通工具（機車×1、跑車×5），3 種行駛路線可重疊
+   - 每台車行駛時播放聲音（2 種使用中音色：機車/跑車，Web Audio 合成）
    ============================================================ */
 (function () {
   'use strict';
@@ -21,12 +21,12 @@
 
   /* ── 交通工具規格（×1.2 放大），cat 決定音色分類 ── */
   const CAR = {
-    bike1:  { w: 36, h: 70,  mask: 'mask-bike1.png',  cat: 'bicycle'    },
     moto1:  { w: 39, h: 76,  mask: 'mask-moto1.png',  cat: 'motorcycle' },
-    moto2:  { w: 38, h: 73,  mask: 'mask-moto2.png',  cat: 'motorcycle' },
     sport4: { w: 62, h: 114, mask: 'mask-sport4.png', cat: 'sports'     },
     sport5: { w: 64, h: 116, mask: 'mask-sport5.png', cat: 'sports'     },
-    sport6: { w: 66, h: 118, mask: 'mask-sport6.png', cat: 'sports'     },
+    sport6: { w: 53, h: 94,  mask: 'mask-sport6.png', cat: 'sports'     },
+    sport7: { w: 62, h: 114, mask: 'mask-sport7.png', cat: 'sports'     },
+    sport8: { w: 64, h: 116, mask: 'mask-sport8.png', cat: 'sports'     },
   };
 
   /* ── 行駛音效基頻（3 種分類音色：腳踏車/機車/跑車） ── */
@@ -326,7 +326,7 @@
     const g = elSvg('g', { class: 'car-wrap' });
     const scaleG = elSvg('g', { class: 'car-scale' });
     const img = elSvg('image', {
-      href: imgData || ('assets/' + spec.mask + '?v=15'),
+      href: imgData || ('assets/' + spec.mask + '?v=16'),
       x: String(-spec.w / 2), y: String(-spec.h / 2),
       width: String(spec.w), height: String(spec.h),
       filter: 'url(#carOutline)',
@@ -501,7 +501,7 @@
 
   /* ── Demo ── */
   function runDemo() {
-    const types = ['bike1', 'moto1', 'moto2', 'sport4', 'sport5', 'sport6'];
+    const types = ['moto1', 'sport4', 'sport5', 'sport6', 'sport7', 'sport8'];
     function scheduleNext() {
       const delay = 1800 + Math.random() * 2500;
       setTimeout(function () {
