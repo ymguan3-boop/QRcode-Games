@@ -1,5 +1,5 @@
 /* ============================================================
-   Car-Race-8 · main-screen.js v17
+   Car-Race-8 · main-screen.js v18
    ──────────────────────────────────────────────────────────
    - 賽道底圖在最底層（<image>），真正的跑道繪於其上方
    - 交通工具以 SVG <g> 渲染於同一 viewBox，與跑道完全對齊
@@ -51,7 +51,7 @@
   const RACE = {
     laps: 1,
     lapDur: { min: 13, max: 18 },
-    maxCars: 24,
+    maxCars: 20,
     minGap: 40,
     startStagger: 0.0,
     startProgress: 0.0,
@@ -326,7 +326,7 @@
     const g = elSvg('g', { class: 'car-wrap' });
     const scaleG = elSvg('g', { class: 'car-scale' });
     const img = elSvg('image', {
-      href: imgData || ('assets/' + spec.mask + '?v=17'),
+      href: imgData || ('assets/' + spec.mask + '?v=18'),
       x: String(-spec.w / 2), y: String(-spec.h / 2),
       width: String(spec.w), height: String(spec.h),
       filter: 'url(#carOutline)',
@@ -437,7 +437,7 @@
     }
   }
 
-  function syncCarLayer() { el.activeCars.textContent = carState.size; }
+  function syncCarLayer() { el.activeCars.textContent = carState.size + '/' + RACE.maxCars; }
 
   /* ── QR ── */
   function showQR() {
